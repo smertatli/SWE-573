@@ -15,10 +15,7 @@ import twitter
 from collections import OrderedDict
 from .fusioncharts import FusionCharts
 
-CONSUMER_KEY = "sJJJUWkvfvpZYcbY0buMRYup7"
-CONSUMER_SECRET = "iDQB0WGuOsY7ITZCYwZEk2o7a2kxiSKn6kFg3NZFO4ca11LoYA" 
-ACCESS_TOKEN = "184983841-Cg8ps0f6pp98lsQRwennlwhilmHpMFQp2TUuciH1"
-ACCESS_TOKEN_SECRET = "an8rfv4cyuSLCCaUqfU3zy8RRS55hmGHUvim1FGDJkQlk"
+
 
 
 def is_email_occupied(_email):
