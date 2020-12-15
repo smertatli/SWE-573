@@ -15,6 +15,10 @@ import twitter
 from collections import OrderedDict
 from .fusioncharts import FusionCharts
 
+CONSUMER_KEY = "sJJJUWkvfvpZYcbY0buMRYup7"
+CONSUMER_SECRET = "iDQB0WGuOsY7ITZCYwZEk2o7a2kxiSKn6kFg3NZFO4ca11LoYA" 
+ACCESS_TOKEN = "184983841-Cg8ps0f6pp98lsQRwennlwhilmHpMFQp2TUuciH1"
+ACCESS_TOKEN_SECRET = "an8rfv4cyuSLCCaUqfU3zy8RRS55hmGHUvim1FGDJkQlk"
 
 
 def is_email_occupied(_email):
@@ -28,13 +32,12 @@ def is_email_occupied(_email):
 def _signup(request):
     error=''
     if request.method == 'POST':
-        form = UserForm(data = request.POST)
-        error=form
-        if is_email_occupied(request.POST.get('username')):
-            error = 'Email is in use. Please provide a different email.'
         
+        form = UserForm(data = request.POST)
+        if is_email_occupied(request.POST.get('email')):
+            error = 'Email is in use. Please provide a different email.'
+
         elif form.is_valid():
-            
             user = form.save()
             password = request.POST.get('password')
             user.set_password(password)
@@ -42,7 +45,8 @@ def _signup(request):
             return redirect(settings.LOGIN_URL)
         else:
             error = 'Form validation failed.' 
-    
+        error = form.errors
+
     return render(request, 'accounts/signup.html', {
         'error': error 
     })
@@ -84,7 +88,7 @@ def _sniff_tweets(request):
                   consumer_secret=CONSUMER_SECRET,
                   access_token_key=ACCESS_TOKEN,
                   access_token_secret=ACCESS_TOKEN_SECRET)
-    data = api.GetSearch(term=keyword, count=100, lang='tr', since=start_date, until=end_date ,  include_entities=False, result_type='recent')
+    data = api.GetSearch(term=keyword, count=100, lang='en', since=start_date, until=end_date ,  include_entities=False, result_type='recent')
     tweets_text = [[tw.id,tw.created_at,tw.text] for tw in data]
     tweets_text = {'data': tweets_text}
     
