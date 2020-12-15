@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./mainapp
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./mainapp/:/usr/src/mainapp/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
+    stdin_open: true
+  db:
+    image: postgres:12.0-alpine
+    volumes:
+      - keepdataa:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=hello_django
+      - POSTGRES_PASSWORD=hello_django
+      - POSTGRES_DB=hello_django_dev
+
+
+volumes:
+  keepdataa:
+
+
