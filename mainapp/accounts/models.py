@@ -8,3 +8,5 @@ class User(models.Model):
     password = models.CharField(max_length=100)
 
 
+class Deneme(models.Model):
+    ad=models.CharField(max_length=100)

@@ -53,7 +53,7 @@
                                 <ul class="mm-collapse">
                                     <li class="item-name"><a href="alerts.html"><i class="nav-icon i-Bell1"></i><span class="item-name">My Current Tracks</span></a></li>
                                     <li class="nav-item"><a href="dropdown.html"><i class="nav-icon i-Bell1"></i><span class="item-name">Examine Tracks</span></a></li>
-                                    <li class="item-name"><a href="buttons.html"><i class="nav-icon i-Cursor-Click"></i><span class="item-name">Create Track</span></a></li>
+                                    <li class="item-name"><a href="{% url 'tracker:create_track' %}"></i><span class="item-name">Create Track</span></a></li>
                              </ul>
                             </li>
                             <li class="Ul_li--hover"><a class="has-arrow" href="#"><i class="i-Suitcase text-20 mr-2 text-muted"></i><span class="item-name text-15 text-muted">Reports</span></a>
@@ -104,7 +104,7 @@
             <div class="switch-overlay"></div>
             <div class="main-content-wrap mobile-menu-content bg-off-white m-0">
               <!-- ============ Body content start ============= -->
-              <div id="myFirstchart-container">{{ output|safe }}</div>
+ 
                 {% block content %}
                 {% endblock %}
             </div>

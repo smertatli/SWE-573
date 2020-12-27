@@ -1,0 +1,135 @@
+{% extends 'main.html' %} {% load static %} {% block content %}
+
+<script
+  type="text/javascript"
+  src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"
+></script>
+<script
+  type="text/javascript"
+  src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"
+></script>
+<link
+  rel="stylesheet"
+  type="text/css"
+  href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
+/>
+
+
+{% csrf_token %} 
+
+<div class="breadcrumb">
+    <h1>Create Track</h1>
+</div>
+
+<div class="separator-breadcrumb border-top"></div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h4>Track Parameters</h4>
+        <div class="input-group mb-3">
+          <div class="input-group-prepend">
+            <span class="input-group-text" id="basic-addon1">Query</span>
+          </div>
+          <input
+            class="form-control"
+            type="text"
+            placeholder="(covid OR lockdown) AND #staysafe"
+            aria-label="Username"
+            aria-describedby="basic-addon1"
+            id = 'query'
+          />
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="row row-xs">
+            <div class="col-md-5">
+                <select name="cars" id="level1"  style="font-size: x-large;">
+                    <option value="minutely">Minutely</option>
+                    <option value="hourly">Hourly</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+            </div>
+            <div class="col-md-5 mt-3 mt-md-0">
+                <select name="cars" id="level2" style="font-size: x-large;">
+                    <option value=1>1-minute</option>
+                    <option value=5>5-minute</option>
+                    <option value=15>15-minute</option>
+                    <option value=30>30-minute</option>
+                  </select>
+            </div>
+            <div class="col-md-5 mt-3 mt-md-0">
+                <select name="cars" id="fetch_size" style="font-size: x-large;">
+                    <option value=10>10</option>
+                    <option value=50>50</option>
+                    <option value=100>100</option>
+     
+                  </select>
+            </div>
+            <div class="col-md-2 mt-3 mt-md-0">
+                <button class="btn btn-primary btn-block" onclick="myFunction()" id='submit_button'>Register Track</button>
+            </div>
+        </div>
+        
+    </div>
+
+ 
+  </div>
+
+ 
+</div>
+
+
+
+
+  
+  <script>
+    document.getElementById("submit_button").onclick = function() {
+        
+        query = document.getElementById("query").value
+        level1 = document.getElementById("level1").value
+        level2 = document.getElementById("level2").value
+        fetch_size = document.getElementById("fetch_size").value
+
+
+        var result = $.ajax({
+                        type: 'POST',
+                        async: false,
+                        url: '{% url "tracker:create_track_ajax" %}',
+                        dataType: 'json',
+                        data: {'query':query, 
+                               'level1':level1, 
+                               'level2':level2,
+                               'fetch_size':fetch_size}
+                    }).responseJSON;
+            
+
+//        var results = $.ajax({
+//            type: 'POST',
+//            async: false,
+//            url: '{% url "tracker:create_track_ajax" %}',
+//            dataType: 'json',
+//            data: {'query':query, 
+//                    'level1':level1, 
+//                    'level2':level2,
+//                    'fetch_size':fetch_size}
+//            
+//        }).responseJSON;
+//        
+        alert(result['tracker_created'], result['task_created'], result['error'] )
+//      if(result['status'] ) {
+//          alert('SUCCESS')
+//      }
+//      else {
+//          alert(result['status'])
+//      }
+
+    };
+    
+</script>
+
+{% endblock %}
+</div>
+

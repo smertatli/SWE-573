@@ -15,7 +15,10 @@ import twitter
 from collections import OrderedDict
 from .fusioncharts import FusionCharts
 
-
+CONSUMER_KEY = "sJJJUWkvfvpZYcbY0buMRYup7"
+CONSUMER_SECRET = "iDQB0WGuOsY7ITZCYwZEk2o7a2kxiSKn6kFg3NZFO4ca11LoYA" 
+ACCESS_TOKEN = "184983841-Cg8ps0f6pp98lsQRwennlwhilmHpMFQp2TUuciH1"
+ACCESS_TOKEN_SECRET = "an8rfv4cyuSLCCaUqfU3zy8RRS55hmGHUvim1FGDJkQlk"
 
 
 def is_email_occupied(_email):
@@ -85,7 +88,7 @@ def _sniff_tweets(request):
                   consumer_secret=CONSUMER_SECRET,
                   access_token_key=ACCESS_TOKEN,
                   access_token_secret=ACCESS_TOKEN_SECRET)
-    data = api.GetSearch(term=keyword, count=100, lang='en', since=start_date, until=end_date ,  include_entities=False, result_type='recent')
+    data = api.GetSearch(term=keyword, count=100, lang='tr', since=start_date, until=end_date ,  include_entities=False, result_type='recent')
     tweets_text = [[tw.id,tw.created_at,tw.text] for tw in data]
     tweets_text = {'data': tweets_text}
     

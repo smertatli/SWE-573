@@ -3,3 +3,6 @@ psycopg2-binary==2.8.5
 django-crispy-forms
 django-bootstrap4
 python-twitter
+sqlalchemy
+jsonlines
+django-q

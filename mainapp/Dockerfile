@@ -1,5 +1,8 @@
 # pull official base image
-FROM python:3.8.3-alpine
+FROM python:3.8-alpine
+RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+&& apk add py3-pandas@community
+ENV PYTHONPATH=/usr/lib/python3.8/site-packages
 
 # set work directory
 WORKDIR /usr/src/mainapp
@@ -11,6 +14,8 @@ ENV PYTHONUNBUFFERED 1
 # install psycopg2 dependencies
 RUN apk update \
     && apk add postgresql-dev gcc python3-dev musl-dev
+
+
 
 # install dependencies
 RUN pip install --upgrade pip
