@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   web:
@@ -18,23 +18,23 @@ services:
   db:
     image: postgres:12.0-alpine
     volumes:
-      - keepdataa:/var/lib/postgresql/data/
+      - persist_data:/var/lib/postgresql/data/
     environment:
       - POSTGRES_USER=hello_django
       - POSTGRES_PASSWORD=hello_django
       - POSTGRES_DB=hello_django_dev
     networks:
       - postgres
-  pgadmin:
+  pgadmin2:
     image: dpage/pgadmin4
-    container_name: pgadmin4
+    container_name: pgadmin_new
     volumes:
-       - pgadmin:/root/.pgadmin
+       - pgadmin2:/root/.pgadmin
     depends_on:
       - db
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-mert.atli@gmail.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-rRocks15}
       PGADMIN_LISTEN_PORT: 5050
     ports:
       - "5050:5050"
@@ -46,7 +46,7 @@ networks:
     driver: bridge
     
 volumes:
-  keepdataa:
-  pgadmin:
+  persist_data:
+  pgadmin2:
 
 
