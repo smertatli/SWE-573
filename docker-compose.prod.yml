@@ -1,0 +1,62 @@
+version: '3.3'
+
+
+services:
+  web:
+    build:
+      context: ./mainapp
+      dockerfile: Dockerfile.prod
+    command: gunicorn trendspotter.wsgi:application --bind 0.0.0.0:8000
+    expose:
+      - 8000
+    env_file:
+      - ./.env.prod
+    depends_on:
+      - db
+    networks:
+      - postgres_prod
+    volumes:
+      - static_volume:/home/mainapp/web/staticfiles
+  db:
+    image: postgres:12.0-alpine
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.prod.db
+    networks:
+      - postgres_prod
+  pgadmin_prd:
+    image: dpage/pgadmin4
+    container_name: pgadmin_prod
+    volumes:
+       - pgadmin_prod_data:/root/.pgadmin
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-aaa@gmail.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-rRocks15}
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "5050:5050"
+    networks:
+      - postgres_prod
+    tty: true
+  nginx:
+    build: ./nginx
+    ports:
+      - 1337:80
+    depends_on:
+      - web
+    networks:
+      - postgres_prod
+    volumes:
+      - static_volume:/home/mainapp/web/staticfiles
+
+networks:
+  postgres_prod:
+    driver: bridge
+    
+volumes:
+  postgres_prod_data:
+  pgadmin_prod_data:
+  static_volume:

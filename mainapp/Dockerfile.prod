@@ -1,0 +1,75 @@
+# pull official base image
+FROM python:3.8-alpine as builder
+RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+&& apk add py3-pandas@community
+ENV PYTHONPATH=/usr/lib/python3.8/site-packages
+
+# set work directory
+WORKDIR /usr/src/mainapp
+
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# install psycopg2 dependencies
+RUN apk update \
+    && apk add postgresql-dev gcc python3-dev musl-dev
+
+
+
+# install dependencies
+RUN pip install --upgrade pip
+RUN pip install flake8
+
+RUN flake8 --ignore=E501,F401 .
+
+COPY ./requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/mainapp/wheels -r requirements.txt
+
+
+
+
+
+
+
+FROM python:3.8-alpine
+
+RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+&& apk add py3-pandas@community
+ENV PYTHONPATH=/usr/lib/python3.8/site-packages
+
+
+# create directory for the app user
+RUN mkdir -p /home/mainapp
+
+# create the app user
+RUN addgroup -S mainapp && adduser -S mainapp -G mainapp
+
+# create the appropriate directories
+ENV HOME=/home/mainapp
+ENV APP_HOME=/home/mainapp/web
+RUN mkdir $APP_HOME
+RUN mkdir $APP_HOME/staticfiles
+WORKDIR $APP_HOME
+
+# install dependencies
+RUN apk update && apk add libpq
+COPY --from=builder /usr/src/mainapp/wheels /wheels
+COPY --from=builder /usr/src/mainapp/requirements.txt .
+RUN pip install --no-cache /wheels/*
+
+# copy entrypoint-prod.sh
+COPY ./entrypoint.prod.sh $APP_HOME
+
+# copy project
+COPY . $APP_HOME
+
+# chown all the files to the app user
+RUN chown -R mainapp:mainapp $APP_HOME
+
+# change to the app user
+USER mainapp
+
+# run entrypoint.prod.sh
+ENTRYPOINT ["/home/mainapp/web/entrypoint.prod.sh"]
+

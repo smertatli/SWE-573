@@ -6,3 +6,4 @@ python-twitter
 sqlalchemy
 jsonlines
 django-q
+gunicorn==20.0.4
