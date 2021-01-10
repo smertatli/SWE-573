@@ -1,5 +1,7 @@
 {% extends 'main.html' %} {% load static %} {% block content %}
 
+
+
 <script
   type="text/javascript"
   src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"
@@ -14,8 +16,9 @@
   href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
 />
 
-
 {% csrf_token %} 
+
+
 
 <div class="breadcrumb">
     <h1>Create Track</h1>
@@ -45,34 +48,57 @@
       <div class="card-body">
         <div class="row row-xs">
             <div class="col-md-5">
-                <select name="cars" id="level1"  style="font-size: x-large;">
+
+              Select Frequency:
+                <select name="cars" id="level1"  style="font-size: medium;">
                     <option value="minutely">Minutely</option>
-                    <option value="hourly">Hourly</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
+       
                   </select>
-            </div>
-            <div class="col-md-5 mt-3 mt-md-0">
-                <select name="cars" id="level2" style="font-size: x-large;">
-                    <option value=1>1-minute</option>
-                    <option value=5>5-minute</option>
-                    <option value=15>15-minute</option>
-                    <option value=30>30-minute</option>
+            </div></div>
+            <div class="row row-xs">
+            <div class="col-md-5" >
+              Select Interval:
+                <select name="cars" id="level2" style="font-size: medium;">
+                    <option value=1>1</option>
+                    <option value=5>5</option>
+                    <option value=15>15</option>
+                    <option value=30>30</option>
                   </select>
-            </div>
-            <div class="col-md-5 mt-3 mt-md-0">
-                <select name="cars" id="fetch_size" style="font-size: x-large;">
+                </div></div>
+            <div class="row row-xs"> 
+            <div class="col-md-5">
+              Select Fetch Size:
+                <select name="cars" id="fetch_size" style="font-size: medium;">
                     <option value=10>10</option>
                     <option value=50>50</option>
                     <option value=100>100</option>
      
                   </select>
             </div>
-            <div class="col-md-2 mt-3 mt-md-0">
-                <button class="btn btn-primary btn-block" onclick="myFunction()" id='submit_button'>Register Track</button>
+            <div>
+              <div id="reportrange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%">
+                <i class="fa fa-calendar"></i>&nbsp;
+                <span></span> <i class="fa fa-caret-down"></i>
             </div>
+            </div>
+             
+            <div class="col-md-2 mt-3 mt-md-0">
+                <button class="btn btn-primary btn-block mb-3" onclick="myFunction()" id='submit_button'>Register Track</button>
+              </div> 
         </div>
         
+        <div class="card-body">
+ 
+    
+          <div class="alert alert-success" id='success_alert' role="alert"><strong class="text-capitalize">Success!</strong> Lorem ipsum dolor sit amet.
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+      
+          <div class="alert alert-danger" id='error_alert' role="alert"><strong class="text-capitalize">Danger!</strong> Lorem ipsum dolor sit amet.
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+      </div>
+
     </div>
 
  
@@ -86,6 +112,12 @@
 
   
   <script>
+    divis = document.getElementById('success_alert')
+    divis.style.visibility='hidden'
+    divis = document.getElementById('error_alert')
+    divis.style.visibility='hidden'
+
+
     document.getElementById("submit_button").onclick = function() {
         
         query = document.getElementById("query").value
@@ -106,25 +138,11 @@
                     }).responseJSON;
             
 
-//        var results = $.ajax({
-//            type: 'POST',
-//            async: false,
-//            url: '{% url "tracker:create_track_ajax" %}',
-//            dataType: 'json',
-//            data: {'query':query, 
-//                    'level1':level1, 
-//                    'level2':level2,
-//                    'fetch_size':fetch_size}
-//            
-//        }).responseJSON;
-//        
+ 
         alert(result['tracker_created'], result['task_created'], result['error'] )
-//      if(result['status'] ) {
-//          alert('SUCCESS')
-//      }
-//      else {
-//          alert(result['status'])
-//      }
+        divis = document.getElementById('success_alert')
+        divis.style.visibility='visible'
+            
 
     };
     
