@@ -11,210 +11,14 @@
 <link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
 <link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
 
+<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
+<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
 
 {% csrf_token %} 
 
 
 
 
-<style>
-    #chartdiv {
-      width: 100%;
-      height: 500px;
-    }
-    
-    </style>
-    
-    <!-- Resources -->
-    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
-    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
-    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
-    
-    <!-- Chart code -->
-    <script>
-    am4core.ready(function() {
-    
-        var result = $.ajax({
-                        type: 'POST',
-                        async: false,
-                        url: '{% url "analyzer:get_basic_counts" %}',
-                        dataType: 'json'
-                    }).responseJSON;
-
-            
-
-        // Themes begin
-        am4core.useTheme(am4themes_animated);
-        // Themes end
-        
-        var chart = am4core.create("chartdiv", am4charts.XYChart);
-        
-        var arr = []
-
-        for (var key in result){
-            var row = result[key] ;
-            arr.push(row);
-        }
-
- 
-        chart.data = arr;
-
-    
-        
-        chart.dateFormatter.inputDateFormat = "yyyy-MM-dd";
-        var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
-        dateAxis.renderer.minGridDistance = 1
-        dateAxis.startLocation = 0.5;
-        dateAxis.endLocation = 0.5;
-        dateAxis.baseInterval = {
-        timeUnit: "day",
-        count: 1
-        }
-        
-        var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
-        valueAxis.tooltip.disabled = true;
-        
-        var series = chart.series.push(new am4charts.LineSeries());
-        series.dataFields.dateX = "date_info";
-        series.name = "quoted";
-        series.dataFields.valueY = "quoted";
-        series.tooltipHTML = "<img src='https://www.amcharts.com/lib/3/images/car.png' style='vertical-align:bottom; margin-right: 10px; width:28px; height:21px;'><span style='font-size:14px; color:#000000;'><b>{valueY.value}</b></span>";
-        series.tooltipText = "[#000]{valueY.value}[/]";
-        series.tooltip.background.fill = am4core.color("#FFF");
-        series.tooltip.getStrokeFromObject = true;
-        series.tooltip.background.strokeWidth = 3;
-        series.tooltip.getFillFromObject = false;
-        series.fillOpacity = 0.6;
-        series.strokeWidth = 2;
-        series.stacked = true;
-        
-        var series2 = chart.series.push(new am4charts.LineSeries());
-        series2.name = "regular";
-        series2.dataFields.dateX = "date_info";
-        series2.dataFields.valueY = "regular";
-        series2.tooltipHTML = "<img src='https://www.amcharts.com/lib/3/images/motorcycle.png' style='vertical-align:bottom; margin-right: 10px; width:28px; height:21px;'><span style='font-size:14px; color:#000000;'><b>{valueY.value}</b></span>";
-        series2.tooltipText = "[#000]{valueY.value}[/]";
-        series2.tooltip.background.fill = am4core.color("#FFF");
-        series2.tooltip.getFillFromObject = false;
-        series2.tooltip.getStrokeFromObject = true;
-        series2.tooltip.background.strokeWidth = 3;
-        series2.sequencedInterpolation = true;
-        series2.fillOpacity = 0.6;
-        series2.stacked = true;
-        series2.strokeWidth = 2;
-        
-        var series3 = chart.series.push(new am4charts.LineSeries());
-        series3.name = "replied_to";
-        series3.dataFields.dateX = "date_info";
-        series3.dataFields.valueY = "replied_to";
-        series3.tooltipHTML = "<img src='https://www.amcharts.com/lib/3/images/bicycle.png' style='vertical-align:bottom; margin-right: 10px; width:28px; height:21px;'><span style='font-size:14px; color:#000000;'><b>{valueY.value}</b></span>";
-        series3.tooltipText = "[#000]{valueY.value}[/]";
-        series3.tooltip.background.fill = am4core.color("#FFF");
-        series3.tooltip.getFillFromObject = false;
-        series3.tooltip.getStrokeFromObject = true;
-        series3.tooltip.background.strokeWidth = 3;
-        series3.sequencedInterpolation = true;
-        series3.fillOpacity = 0.6;
-        series3.defaultState.transitionDuration = 1000;
-        series3.stacked = true;
-        series3.strokeWidth = 2;
-
-        var series4 = chart.series.push(new am4charts.LineSeries());
-        series4.name = "retweeted";
-        series4.dataFields.dateX = "date_info";
-        series4.dataFields.valueY = "retweeted";
-        series4.tooltipHTML = "<img src='https://www.amcharts.com/lib/3/images/bicycle.png' style='vertical-align:bottom; margin-right: 10px; width:28px; height:21px;'><span style='font-size:14px; color:#000000;'><b>{valueY.value}</b></span>";
-        series4.tooltipText = "[#000]{valueY.value}[/]";
-        series4.tooltip.background.fill = am4core.color("#FFF");
-        series4.tooltip.getFillFromObject = false;
-        series4.tooltip.getStrokeFromObject = true;
-        series4.tooltip.background.strokeWidth = 3;
-        series4.sequencedInterpolation = true;
-        series4.fillOpacity = 0.6;
-        series4.defaultState.transitionDuration = 1000;
-        series4.stacked = true;
-        series4.strokeWidth = 2;
-        
-        chart.cursor = new am4charts.XYCursor();
-        chart.cursor.xAxis = dateAxis;
-        chart.scrollbarX = new am4core.Scrollbar();
-        
-        // Add a legend
-        chart.legend = new am4charts.Legend();
-        chart.legend.position = "top";
-        
-   
-        
-    }); // end am4core.ready()
-    </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<style>
-    #chartdiv2 {
-      width: 100%;
-      max-width: 100%;
-      height: 550px;
-    }
-    </style>
-    
-    <!-- Resources -->
-    <script src="https://cdn.amcharts.com/lib/4/plugins/forceDirected.js"></script>
-    <script src="https://cdn.amcharts.com/lib/4/themes/frozen.js"></script>
-
-    
-    <!-- Chart code -->
-    <script>
-    am4core.ready(function() {
-    
-    var result2 = $.ajax({
-                    type: 'POST',
-                    async: false,
-                    url: '{% url "analyzer:get_domain_entity" %}',
-                    dataType: 'json'
-                }).responseJSON;
-
-    // Themes begin
-    am4core.useTheme(am4themes_frozen);
-    am4core.useTheme(am4themes_animated);
-    // Themes end
-    
-    var chart = am4core.create("chartdiv2", am4plugins_forceDirected.ForceDirectedTree);
-   
-    
-    var networkSeries = chart.series.push(new am4plugins_forceDirected.ForceDirectedSeries())
-    
-    networkSeries.data = result2;
-    
-    networkSeries.dataFields.linkWith = "linkWith";
-    networkSeries.dataFields.name = "name";
-    networkSeries.dataFields.id = "name";
-    networkSeries.dataFields.value = "value";
-    networkSeries.dataFields.children = "children";
-    
-    networkSeries.nodes.template.tooltipText = "{name}";
-    networkSeries.nodes.template.fillOpacity = 1;
-    
-    networkSeries.nodes.template.label.text = "{name}"
-    networkSeries.fontSize = 8;
-    networkSeries.maxLevels = 2;
-    networkSeries.maxRadius = am4core.percent(6);
-    networkSeries.manyBodyStrength = -16;
-    networkSeries.nodes.template.label.hideOversized = true;
-    networkSeries.nodes.template.label.truncate = true;
-    
-    }); // end am4core.ready()
-    </script>
 
 
 
@@ -232,7 +36,29 @@
                 <div class="btn-toolbar sw-toolbar sw-toolbar-top justify-content-end" >
                     <div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">Finish</button><button class="btn btn-danger">Cancel</button></div></div><div class="sw-container tab-content" style="min-height: 214px;">
                     <div id="step-1" class="tab-pane step-content" style="display: block;">
-                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3><input type='text'>Hadi</input>
+                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
+                            <table id="example4" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
                     </div>
                     <div id="step-2" class="tab-pane step-content" >
                         <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
@@ -278,23 +104,30 @@
                     </div>
                     <div id="step-4" class="tab-pane step-content">
                         <h3 class="border-bottom border-gray pb-2">Step 4 Content</h3>
-                        <div class="card o-hidden">
-                            <div class="card-header">My Details</div>
-                            <div class="card-block p-0">
-                                <table class="table">
-                                    <tbody>
-                                        <tr>
-                                            <th>Name:</th>
-                                            <td>Tim Smith</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Email:</th>
-                                            <td>example@example.com</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <table id="example3" class="display" cellspacing="0" width="100%">
+                            <thead>
+                               <tr>
+                                  <th></th>
+                                  <th>Username</th>
+                                  <th>Poplarity Rank</th>
+                                  <th>Desc</th>
+                                  <th>Location</th>
+                                  <th>Name</th>
+                                  <th>Verified</th>
+                               </tr>
+                            </thead>
+                            <tfoot>
+                               <tr>
+                                  <th></th>
+                                  <th>Username</th>
+                                  <th>Poplarity Rank</th>
+                                  <th>Desc</th>
+                                  <th>Location</th>
+                                  <th>Name</th>
+                                  <th>Verified</th>
+                               </tr>
+                            </tfoot>
+                         </table>
                     </div>
                 </div><div class="btn-toolbar sw-toolbar sw-toolbar-bottom justify-content-end"><div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">Finish</button><button class="btn btn-danger">Cancel</button></div></div>
             </div>
@@ -304,11 +137,9 @@
 
 <div id="chartdiv"></div>
 <div id="chartdiv2"></div>
- 
+<button class="btn btn-success btn-block mb-3" id="alert-success" type="button" onclick="alert('DONE')">Analyze</button>
 
 
-<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
-<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
 
 
 
@@ -345,15 +176,44 @@
                         dataType: 'json'
                         
                     }).responseJSON;
- 
+
+        var users = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:get_user_table" %}',
+            dataType: 'json'
+            
+        }).responseJSON;
+
+        var tracks = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:get_tracks" %}',
+            dataType: 'json'
+            
+        }).responseJSON;
+
 
       
+        var table = $('#example4').DataTable({
+        data: tracks,
 
+        'columnDefs': [
+            {
+                'targets': 0,
+                'checkboxes': {
+                    'selectRow': true
+                }
+            }
+        ],
+        'select': {
+            'style': 'multi'
+        },
+        'order': [[1, 'asc']]
+        });
 
-
-
-
-                    var table = $('#example').DataTable({
+        
+        var table = $('#example').DataTable({
         data: domains,
 
         'columnDefs': [
@@ -374,6 +234,24 @@
 
         var table = $('#example2').DataTable({
         data: entities,
+
+        'columnDefs': [
+            {
+                'targets': 0,
+                'checkboxes': {
+                    'selectRow': true
+                }
+            }
+        ],
+        'select': {
+            'style': 'multi'
+        },
+        'order': [[1, 'asc']]
+        });
+
+
+        var table = $('#example3').DataTable({
+        data: users,
 
         'columnDefs': [
             {

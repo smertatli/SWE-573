@@ -1,0 +1,427 @@
+{% extends 'main.html' %} 
+
+{% load static %} 
+
+
+
+{% block content %}
+
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
+
+
+{% csrf_token %} 
+
+
+ 
+            <!--  SmartWizard html -->
+            <div id="smartwizard" class="sw-main sw-theme-default" >
+                <ul class="nav nav-tabs step-anchor">
+                    <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>This is step description</small></a></li>
+                </ul>
+                <div>
+                    <div id="step-1">
+                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
+                            <table id="example4" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
+                    </div>
+                    <div id="step-2" >
+                        <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
+                         <button   onclick='step_first();'>Get collected dates</button>
+                         <select name="date_start" id="selectStartDate"></select>
+                         <select name="date_end" id="selectEndDate"></select>
+                    </div>
+                    <div id="step-3"  >
+                        <h3 class="border-bottom border-gray pb-2">Step 3 Content</h3>
+                        <button   onclick='deneme();'>Get domains</button>
+                        <table id="domain_table" class="display" cellspacing="0" width="100%">
+                            <thead>
+                               <tr>
+                                  <th></th>
+                                  <th>Domain</th>
+                                  <th>Desc</th>
+                               </tr>
+                            </thead>
+                            <tfoot>
+                               <tr>
+                                  <th></th>
+                                  <th>Domain</th>
+                                  <th>Desc</th>
+                               </tr>
+                            </tfoot>
+                         </table>
+                    </div>
+                    <div id="step-4"  >
+                        <h3 class="border-bottom border-gray pb-2">Step 4 Content</h3>
+                         
+                    </div>
+                </div>
+            </div>
+    
+
+
+
+<button class="btn btn-success btn-block mb-3" id="alert-success" type="button" onclick="deneme2();">Analyze</button>
+
+
+<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
+<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+
+
+
+
+
+
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+
+
+<style>
+    #chartdiv {
+      width: 100%;
+      height: 500px;
+    }
+    </style>
+    
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    
+    <!-- Chart code -->
+    <script>
+    am4core.ready(function() {
+    
+    // Themes begin
+    am4core.useTheme(am4themes_animated);
+    // Themes end
+    
+    // Create chart instance
+    var chart = am4core.create("chartdiv", am4charts.XYChart);
+    chart.scrollbarX = new am4core.Scrollbar();
+
+    // Add data
+    var domains = $.ajax({
+                        type: 'POST',
+                        async: false,
+                        url: '{% url "analyzer:get_domain_for_graph" %}',
+                        dataType: 'json'
+                        
+                    }).responseJSON;
+
+    var entities = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:get_entity_for_graph" %}',
+        dataType: 'json'
+        
+    }).responseJSON;
+ 
+
+    chart.data = domains;
+
+    
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "domain";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.renderer.labels.template.horizontalCenter = "right";
+    categoryAxis.renderer.labels.template.verticalCenter = "middle";
+    categoryAxis.renderer.labels.template.rotation = 270;
+    categoryAxis.tooltip.disabled = true;
+    categoryAxis.renderer.minHeight = 110;
+    
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.minWidth = 50;
+    
+    // Create series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.sequencedInterpolation = true;
+    series.dataFields.valueY = "count";
+    series.dataFields.categoryX = "domain";
+    series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+    series.columns.template.strokeWidth = 0;
+    
+    series.tooltip.pointerOrientation = "vertical";
+    
+    series.columns.template.column.cornerRadiusTopLeft = 10;
+    series.columns.template.column.cornerRadiusTopRight = 10;
+    series.columns.template.column.fillOpacity = 0.8;
+    
+    // on hover, make corner radiuses bigger
+    var hoverState = series.columns.template.column.states.create("hover");
+    hoverState.properties.cornerRadiusTopLeft = 0;
+    hoverState.properties.cornerRadiusTopRight = 0;
+    hoverState.properties.fillOpacity = 1;
+    
+    series.columns.template.adapter.add("fill", function(fill, target) {
+      return chart.colors.getIndex(target.dataItem.index);
+    });
+    
+    // Cursor
+    chart.cursor = new am4charts.XYCursor();
+    
+    }); // end am4core.ready()
+    </script>
+
+<div id="chartdiv"></div>
+
+
+
+
+<style>
+    #chartdiv2 {
+      width: 100%;
+      height: 500px;
+    }
+    </style>
+    
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    
+    <!-- Chart code -->
+    <script>
+    am4core.ready(function() {
+    
+    // Themes begin
+    am4core.useTheme(am4themes_animated);
+    // Themes end
+    
+    // Create chart instance
+    var chart = am4core.create("chartdiv2", am4charts.XYChart);
+    chart.scrollbarX = new am4core.Scrollbar();
+
+
+
+    var entities = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:get_entity_for_graph" %}',
+        dataType: 'json'
+        
+    }).responseJSON;
+ 
+ 
+    chart.data = entities
+
+    
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "entity";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.renderer.labels.template.horizontalCenter = "right";
+    categoryAxis.renderer.labels.template.verticalCenter = "middle";
+    categoryAxis.renderer.labels.template.rotation = 270;
+    categoryAxis.tooltip.disabled = true;
+    categoryAxis.renderer.minHeight = 300;
+    
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.minWidth = 10;
+    
+    // Create series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.sequencedInterpolation = true;
+    series.dataFields.valueY = "count";
+    series.dataFields.categoryX = "entity";
+    series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+    series.columns.template.strokeWidth = 0;
+    
+    series.tooltip.pointerOrientation = "vertical";
+    
+    series.columns.template.column.cornerRadiusTopLeft = 10;
+    series.columns.template.column.cornerRadiusTopRight = 10;
+    series.columns.template.column.fillOpacity = 0.8;
+    
+    // on hover, make corner radiuses bigger
+    var hoverState = series.columns.template.column.states.create("hover");
+    hoverState.properties.cornerRadiusTopLeft = 0;
+    hoverState.properties.cornerRadiusTopRight = 0;
+    hoverState.properties.fillOpacity = 1;
+    
+    series.columns.template.adapter.add("fill", function(fill, target) {
+      return chart.colors.getIndex(target.dataItem.index);
+    });
+    
+    // Cursor
+    chart.cursor = new am4charts.XYCursor();
+    
+    }); // end am4core.ready()
+    </script>
+
+<div id="chartdiv2"></div>
+
+
+
+
+
+
+
+
+
+
+    <script>
+ 
+        var tracks = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:get_tracks" %}',
+            dataType: 'json'
+            
+        }).responseJSON;
+
+        var domains = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {'which':'get_domains'}
+            
+        }).responseJSON;
+
+
+        
+        var table_track = $('#example4').DataTable({
+            data: tracks,
+
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
+
+        var table_domain = $('#domain_table').DataTable({
+            data: domains,
+
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
+
+        
+        
+
+        function step_first(){
+            var rows_selected = table_track.column(0).checkboxes.selected();
+            // Iterate over all selected checkboxes
+            if(rows_selected){
+                var arr = []
+                $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+                var dates = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'entity_domain_get_dates',
+                           'data_sources': arr.toString()
+                          }
+                    
+                }).responseJSON;
+                 
+
+                var start_date = document.getElementById("selectStartDate"); 
+                var end_date = document.getElementById("selectEndDate"); 
+
+                for (i = start_date.length-1; i >= 0; i--) {
+                    start_date.options[i] = null;
+                    end_date.options[i] = null;
+                    }
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    start_date.appendChild(el);
+        
+                });
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    end_date.appendChild(el);
+        
+                });
+            } else {
+                alert('Please select a data source first!');
+            }
+            
+        }
+    
+        function deneme(){
+            var rows_selected = table_domain.column(0).checkboxes.selected();
+            var arr = []
+            $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+            alert(arr)
+        }
+
+        function deneme2(){
+            var track_selected = table_track.column(0).checkboxes.selected();
+            var domain_selected = table_domain.column(0).checkboxes.selected();
+            var arr = [];
+            var arr2 = []
+            $.each(track_selected, function(index, rowId){arr.push(rowId)});
+            $.each(domain_selected, function(index, rowId){arr2.push(rowId)});
+            var start_date = document.getElementById("selectStartDate").value; 
+            var end_date = document.getElementById("selectEndDate").value; 
+            alert([arr, arr2, start_date, end_date])
+        }
+ 
+
+        
+
+    </script>
+
+{% endblock %}
+</div>
+

@@ -6,15 +6,16 @@ import twitter
 from sqlalchemy import create_engine
 from django.conf import settings
 import pandas as pd
+import numpy as np
 
-def TweetCollector(query, fetch_size, manual=True):
+def TweetCollector(query, fetch_size, query_name, manual=True):
 
     counter = 0
    
     if not manual:
         json_response = twitter_api.gettw(query, fetch_size)
         main = tweet_processor.get_all_info(json_response['data'], json_response['includes'])
-        insertTweets(main)
+        insertTweets(main, query_name)
     else:
         df_merge, df_users, df_tweets_referenced, df_tweets_referenced_meta, \
                         df_media, df_annotations, df_annotation_entity, df_annotation_domain, df_entities = [],[],[],[],[],[],[],[],[]
@@ -64,7 +65,7 @@ def TweetCollector(query, fetch_size, manual=True):
 
 
 
-def insertTweets(main):
+def insertTweets(main, query_name=''):
     time_key = datetime.now()
     
     for elem in main:
@@ -85,9 +86,19 @@ def insertTweets(main):
     df_annotation_domain = main[5][1]
     df_annotation_entity = main[5][2]
     df_entities = main[6]
-
-    df_tweets_referenced.columns  =['tweet_id', 'type', 'reference_tweet_id', 'key']
     
+    df_merge['query_name'] = query_name
+    df_users['query_name'] = query_name
+    df_tweets_referenced['query_name'] = query_name
+    df_tweets_referenced_meta['query_name'] = query_name
+    df_annotations['query_name'] = query_name
+    df_annotations['query_name'] = query_name
+    df_annotation_domain['query_name'] = query_name
+    df_annotation_entity['query_name'] = query_name
+    df_entities['query_name'] = query_name
+    df_media['query_name'] = query_name
+    
+
     db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
     settings.DATABASES['default']['USER'],
     settings.DATABASES['default']['PASSWORD'],
@@ -98,16 +109,10 @@ def insertTweets(main):
 
     engine = create_engine(db_connection_url)
 
-    print('*********************************************** INSERTED ***********************************************')
+    print('*********************************************** INSERTED ***********************************************', df_media.columns)
 
+    def_media =  df_media.replace(r'^\s*$', np.nan, regex=True)
     print('SHAPE: ', df_merge.shape)
-#    for i in range(0,df_merge.shape[0]):
-#        
-#        try:
-#            df_merge.loc[i:i+1, :].to_sql('df_merge', engine, if_exists='append', index=False)
-#        except:
-#            print('ERROR: ', df_merge.loc[i:i+1, :])
-#            df_merge.loc[i:i+1, :].to_csv('incele.csv')
             
     df_merge.drop('tweet_coordinate', axis=1, errors='ignore').to_sql('df_merge', engine, if_exists='append', index=False)
     

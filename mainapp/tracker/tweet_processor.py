@@ -111,17 +111,18 @@ def get_media_info(data, includes):
             type_ =  media.get('type','')
             url =  media.get('url','')
             if media.get('public_metrics',''):
-                view_count =  media.get('public_metrics','').get('view_count', '')
+                view_count =  media.get('public_metrics','').get('view_count', -1)
             else:
-                view_count = ''
-            duration_ms = media.get('duration_ms','')
+                view_count = -1
+            print('VIEW COUNT:    ', view_count)
+            duration_ms = media.get('duration_ms',-1)
             attachments_meta.append([media_key, type_, url, view_count, duration_ms])
 
     if includes.get('polls', ''):
         for poll in includes['polls']:
             poll_key =  poll.get('id','')
             poll_option = poll.get('options', '')
-            attachments_meta.append([poll_key, 'poll', str(poll_option), '', ''])
+            attachments_meta.append([poll_key, 'poll', str(poll_option), -1, -1])
 
 
     attachments = []    

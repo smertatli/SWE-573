@@ -12,7 +12,7 @@ from django_q.tasks import async_task, schedule
 from django_q.models import Schedule
 from datetime import timedelta
 from django.utils import timezone
-
+from datetime import datetime
 
 def create_track(request):
     return render(request, 'tracker/create.html')
@@ -25,18 +25,25 @@ def create_track_ajax(request):
     if request.method == "POST":
         try:
             user=request.user
+            name=request.POST.get('name')
             query=request.POST.get('query')
             frequency_level1=request.POST.get('level1')
             frequency_level2=request.POST.get('level2')
             fetch_size = request.POST.get('fetch_size')
+            date_start = request.POST.get('date_start')
+            date_end = request.POST.get('date_end')
+
             Tracker.objects.create(user=user,
+                                    query_name = name,
                                     query=query,
                                     frequency_level1=frequency_level1,
                                     frequency_level2=frequency_level2,
                                     fetch_size = fetch_size,
-                                    max_tweet_id="0")
+                                    date_start = date_start,
+                                    date_end = date_end 
+                                    )
             tracker_created = True
-            task_created = create_task(query, frequency_level1, frequency_level2, fetch_size)
+            task_created = create_task(name, query, frequency_level1, frequency_level2, fetch_size, date_start, date_end, manual=False)
         except:
             tracker_created = False
             task_created = False
@@ -47,8 +54,22 @@ def create_track_ajax(request):
     
 
 @csrf_exempt
-def create_task(query, frequency_level1, frequency_level2, fetch_size, manual=True):
+def create_task(name, query, frequency_level1, frequency_level2, fetch_size, date_start, date_end, manual=True):
     status = 'NOPE'
+
+    date_start = datetime.strptime(date_start, "%Y-%m-%d")
+    date_end =  datetime.strptime(date_end, "%Y-%m-%d")
+
+    day_diff = (date_end - date_start).days
+
+    if frequency_level1 == 'minute':
+        schedule_type = 'I'
+        repeat = day_diff * 24 * 60
+    else:
+        schedule_type ='H'
+        repeat = day_diff * 24
+      
+
     if manual:
         try:
             tweet_collector.TweetCollector(None, None, manual = manual)
@@ -59,11 +80,16 @@ def create_task(query, frequency_level1, frequency_level2, fetch_size, manual=Tr
     else:
         try:
             schedule('tracker.tweet_collector.TweetCollector',
+                    
                     query = query,
                     fetch_size = fetch_size,
-                    schedule_type = 'I',
+                    query_name=name,
+                    manual = manual,
+                    schedule_type = schedule_type,
+                    
                     minutes = 1,
-                    repeats = 10)
+                    repeats = repeat
+                    )
             status = True
         except:
             status = False

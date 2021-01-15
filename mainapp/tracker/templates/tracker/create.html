@@ -18,123 +18,206 @@
 
 {% csrf_token %} 
 
+<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
+<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
+ 
 
 
-<div class="breadcrumb">
-    <h1>Create Track</h1>
-</div>
+ 
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
-<div class="separator-breadcrumb border-top"></div>
 <div class="row">
-  <div class="col-md-12">
-    <div class="card mb-4">
-      <div class="card-body">
-        <h4>Track Parameters</h4>
-        <div class="input-group mb-3">
-          <div class="input-group-prepend">
-            <span class="input-group-text" id="basic-addon1">Query</span>
-          </div>
-          <input
-            class="form-control"
-            type="text"
-            placeholder="(covid OR lockdown) AND #staysafe"
-            aria-label="Username"
-            aria-describedby="basic-addon1"
-            id = 'query'
-          />
-        </div>
-      </div>
+  <div class="col-md-12" >
+      <!--  SmartWizard html -->
+      <div id="smartwizard" class="sw-main sw-theme-default" >
+          <ul class="nav nav-tabs step-anchor">
+              <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>Query Specfication</small></a></li>
+              <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
+              <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
+              
+          </ul>
+          <div class="btn-toolbar sw-toolbar sw-toolbar-top justify-content-end" >
+              <div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">ff</button><button class="btn btn-danger">Cancel</button></div></div><div class="sw-container tab-content" style="min-height: 214px;">
+              <div id="step-1" class="tab-pane step-content" style="display: block;">
+                <h3 class="border-bottom border-gray pb-2">Specify Query Name</h3>
+                <input type='text' class="col-md-12" value ='For example: covid19_related_tweets' id='name_query'> </input>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                <h3 class="border-bottom border-gray pb-2"></h3>
+                  <h3 class="border-bottom border-gray pb-2">Specify your query by keyword, hashtags, and phrases</h3>
+                      <input type='text' class="col-md-12" value ='For example: (covid OR covid19)' id='user_query'> </input>
+              </div>
+              <div id="step-2" class="tab-pane step-content" >
+                  <h3 class="border-bottom border-gray pb-2">Specify collection frequencies:</h3>
+                  <div class="row">
+                     
 
-      <div class="card-body">
-        <div class="row row-xs">
-            <div class="col-md-5">
 
-              Select Frequency:
-                <select name="cars" id="level1"  style="font-size: medium;">
-                    <option value="minutely">Minutely</option>
-       
-                  </select>
-            </div></div>
-            <div class="row row-xs">
-            <div class="col-md-5" >
-              Select Interval:
-                <select name="cars" id="level2" style="font-size: medium;">
-                    <option value=1>1</option>
-                    <option value=5>5</option>
-                    <option value=15>15</option>
-                    <option value=30>30</option>
-                  </select>
-                </div></div>
-            <div class="row row-xs"> 
-            <div class="col-md-5">
-              Select Fetch Size:
-                <select name="cars" id="fetch_size" style="font-size: medium;">
-                    <option value=10>10</option>
-                    <option value=50>50</option>
-                    <option value=100>100</option>
-     
-                  </select>
-            </div>
-            <div>
-              <div id="reportrange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%">
-                <i class="fa fa-calendar"></i>&nbsp;
-                <span></span> <i class="fa fa-caret-down"></i>
-            </div>
-            </div>
-             
-            <div class="col-md-2 mt-3 mt-md-0">
-                <button class="btn btn-primary btn-block mb-3" onclick="myFunction()" id='submit_button'>Register Track</button>
-              </div> 
-        </div>
-        
-        <div class="card-body">
- 
+                    <div class="col-md-4">
+                      <div class="card mb-4">
+                          <div class="card-body">
+                              <div class="card-title">Level 1</div>
+                              <label class="radio radio-outline-primary">
+                                  <input type="radio" name="level1" value='minute' onclick="myFunction()"><span>Minutely</span><span class="checkmark"></span>
+                              </label>
+                              <label class="radio radio-outline-secondary">
+                                  <input type="radio" name="level1" value='hour' onclick="myFunction()"><span>Daily</span><span class="checkmark"></span>
+                              </label>
+                          </div>
+                      </div>
+                  </div>
+
+
+                  <div class="col-md-4" display='none' id='level2_minute'>
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="card-title">Level 2</div>
+                            <label class="radio radio-outline-primary">
+                                <input type="radio" name="level2_minute" value=1><span>1-Minute</span><span class="checkmark"></span>
+                            </label>
+                            <label class="radio radio-outline-secondary">
+                                <input type="radio" name="level2_minute" value=5><span>5-Minute</span><span class="checkmark"></span>
+                            </label>
+                            <label class="radio radio-outline-success">
+                                <input type="radio" name="level2_minute" value=15><span>15-Minute</span><span class="checkmark"></span>
+                            </label>
+                            <label class="radio radio-outline-warning">
+                                <input type="radio" name="level2_minute" value=30><span>30-Minute</span><span class="checkmark"></span>
+                            </label>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4" id='level2_hour'>
+                  <div class="card mb-4">
+                      <div class="card-body">
+                          <div class="card-title">Level 2</div>
+                          <label class="radio radio-outline-primary">
+                              <input type="radio" name="level2_hour" value=1><span>1-Hour</span><span class="checkmark"></span>
+                          </label>
+                          <label class="radio radio-outline-secondary">
+                              <input type="radio" name="level2_hour" value=2><span>2-Hour</span><span class="checkmark"></span>
+                          </label>
+                          <label class="radio radio-outline-success">
+                              <input type="radio" name="level2_hour" value=3><span>3-Hour</span><span class="checkmark"></span>
+                          </label>
+                          
+                      </div>
+                  </div>
+              </div>
+
+
+                  <div class="col-md-4" display='none' id='level2_size'>
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="card-title">Fetch Size</div>
+                            <label class="radio radio-outline-primary">
+                                <input type="radio" name="level2_size" value=10><span>10</span><span class="checkmark"></span>
+                            </label>
+                            <label class="radio radio-outline-secondary">
+                                <input type="radio" name="level2_size" value=50><span>50</span><span class="checkmark"></span>
+                            </label>
+                            <label class="radio radio-outline-success">
+                                <input type="radio" name="level2_size" value=100><span>100</span><span class="checkmark"></span>
+                            </label>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                  
+                  </div>
+              </div>
+              <div id="step-3" class="tab-pane step-content">
+               
+                <input type="text" name="daterange" value="01/01/2021 - 01/15/2021" />
+              
+                <div class="col-md-12">
+                  <div class="card mb-12">
+                      <div class="card-body">
+                          <h6 class="mb-3">Estimated number of tweets:</h6>
+                          <p class="text-20 text-success line-height-1 mb-3"><i class="i-Arrow-Up-in-Circle" id='estimated_number_of_tweets'></i></p><small class="text-muted">Last down 4 days ago</small>
+                      </div>
+                  </div>
+              </div>
     
-          <div class="alert alert-success" id='success_alert' role="alert"><strong class="text-capitalize">Success!</strong> Lorem ipsum dolor sit amet.
-              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
-          </div>
-      
-          <div class="alert alert-danger" id='error_alert' role="alert"><strong class="text-capitalize">Danger!</strong> Lorem ipsum dolor sit amet.
-              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
-          </div>
+
+              </div>
+           
+          </div><div class="btn-toolbar sw-toolbar sw-toolbar-bottom justify-content-end"><div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">Finish</button><button class="btn btn-danger">Cancel</button></div></div>
       </div>
-
-    </div>
-
- 
   </div>
-
- 
 </div>
 
+<div id='date_start'></div>
+<div id='date_end'></div>
+
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/sweetalert2.min.css" />
+<script src="/static/dist-assets/js/plugins/sweetalert2.min.js"></script>
+<script src="/static/dist-assets/js/scripts/sweetalert.script.min.js"></script>
+
+<button class="btn btn-success btn-block mb-3" id="alert-success" type="button" onclick="createTrack()">Create Track</button>
 
 
+  <script>
+
+  document.getElementById("level2_minute").style.display = "none";
+  document.getElementById("level2_hour").style.display = "none";
+  document.getElementById("date_start").style.display = "none";
+  document.getElementById("date_end").style.display = "none";
 
   
-  <script>
-    divis = document.getElementById('success_alert')
-    divis.style.visibility='hidden'
-    divis = document.getElementById('error_alert')
-    divis.style.visibility='hidden'
+  function myFunction() {
+      var x = document.querySelector('input[name="level1"]:checked').value;
+
+      if (x == 'minute') {
+        document.getElementById("level2_minute").style.display = "block";
+        document.getElementById("level2_hour").style.display = "none";
+      } else {
+        document.getElementById("level2_minute").style.display = "none";
+        document.getElementById("level2_hour").style.display = "block";
+      }
+    }
 
 
-    document.getElementById("submit_button").onclick = function() {
+
+
+    function createTrack() {
         
-        query = document.getElementById("query").value
-        level1 = document.getElementById("level1").value
-        level2 = document.getElementById("level2").value
-        fetch_size = document.getElementById("fetch_size").value
+        var name_query = document.getElementById("name_query").value;
+        var query = document.getElementById("user_query").value;
+        var level1 = document.querySelector('input[name="level1"]:checked').value;
+        var level2 = '';
+        if(level1 == 'minute'){
+          level2 = document.querySelector('input[name="level2_minute"]:checked').value
+        } else {
+          level2 = document.querySelector('input[name="level2_hour"]:checked').value
+        }
+        var fetch_size = document.querySelector('input[name="level2_size"]:checked').value;
+        var date_start = document.getElementById("date_start").innerText;
+        var date_end = document.getElementById("date_end").innerText;
 
-
+        alert([name_query,query, level1, level2, fetch_size, date_start, date_end])
         var result = $.ajax({
                         type: 'POST',
                         async: false,
                         url: '{% url "tracker:create_track_ajax" %}',
                         dataType: 'json',
-                        data: {'query':query, 
+                        data: {'name':name_query,
+                               'query':query, 
                                'level1':level1, 
                                'level2':level2,
-                               'fetch_size':fetch_size}
+                               'fetch_size':fetch_size,
+                               'date_start':date_start,
+                               'date_end':date_end
+                               }
                     }).responseJSON;
             
 
@@ -148,6 +231,24 @@
     
 </script>
 
+<script>
+  $(function() {
+    $('input[name="daterange"]').daterangepicker({
+      opens: 'left'
+    }, function(start, end, label) {
+      console.log("A new date selection was made: " + start.format('YYYY-MM-DD') + ' to ' + end.format('YYYY-MM-DD'));
+
+      const diffTime = Math.abs(end - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      document.getElementById("estimated_number_of_tweets").innerHTML = diffDays * 100
+      document.getElementById("date_start").innerHTML = start.format('YYYY-MM-DD')
+      document.getElementById("date_end").innerHTML = end.format('YYYY-MM-DD')
+    });
+  });
+  </script>
+
 {% endblock %}
+
+
 </div>
 

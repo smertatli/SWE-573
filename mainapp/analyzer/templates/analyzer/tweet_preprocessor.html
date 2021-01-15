@@ -1,0 +1,631 @@
+{% extends 'main.html' %} 
+
+{% load static %} 
+
+
+
+{% block content %}
+
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
+
+
+{% csrf_token %} 
+
+
+ 
+            <!--  SmartWizard html -->
+            <div id="smartwizard" class="sw-main sw-theme-default" >
+                <ul class="nav nav-tabs step-anchor">
+                    <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>Preprocessing Options</small></a></li>
+                    <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>NLP Options</small></a></li>
+                    <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>Stopwords Options</small></a></li>
+                    <li class="nav-item"><a href="#step-5" class="nav-link">Step 5<br><small>Custom word corrections</small></a></li>
+                    <li class="nav-item"><a href="#step-6" class="nav-link">Step 6<br><small>Give a name to processor</small></a></li>
+                </ul>
+                <div>
+                    <div id="step-1">
+                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
+                            <table id="tracker_table" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
+                    </div>
+                    <div id="step-2" class='row'>
+                        <h3 class="border-bottom border-gray pb-2">PREPROCESSING OPTIONS</h3>
+                         
+                      
+                        <div class="card-body">
+                            <div class="card-title mb-3">Form Inputs</div>
+                            <form>
+                                <div class="row">
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_stop_words'><span>Remove Stop Words</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_punc'> <span>Remove Punctuation, Emojis, and Smiley</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_urls'><span>Remove URLs</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_hashtags'><span>Remove Hashtags</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_mentions'>><span>Remove Mentions</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_reserved'><span>Remove Reserved words (RT, FAV)</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_numbers'><span>Remove Numbers</span><span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                     
+                        
+                                </div>
+                            </form>
+                        </div>
+                        
+                    </div>
+                    <div id="step-3"  >
+                        <h3 class="border-bottom border-gray pb-2">Sentiment Analysis Options</h3>
+                        <label class="radio radio-primary">
+                            <input type="radio" name="nlp_package" value="nltk" class='nlp'><span>NLTK</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-primary">
+                            <input type="radio" name="nlp_package" value="textblob" class='nlp'><span>Textblob</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-primary">
+                            <input type="radio" name="nlp_package" value="flair" class='nlp'><span>Flair</span><span class="checkmark"></span>
+                        </label>
+                       
+                    </div>
+                    <div id="step-4"  >
+                        <h3 class="border-bottom border-gray pb-2">Stopword List</h3>
+                        
+                        <div class="card-body">
+                            
+                            <form>
+                                <div class="row">
+                                    <div class="col-md-8 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <textarea id="stopwords" name="w3review" rows="20" cols="100"></textarea>
+                                        </label>
+                                    </div>
+
+                                    <div class="col-md-4 form-group mb-3">
+                                        
+                                            Select a stopword source:
+                                            <select name="stopwords_selection" id="stopword_list" onChange='load_selected_stopword();'></select>
+                                              
+                                            <button class="btn btn-primary ripple m-1" type="button" id='savesame' onclick="save_stopwords();">Save As New Source</button>
+                                              
+                                            <input type='text' id='stopword_file_name'></label>
+                                              
+                                         
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="step-5"  >
+                        
+                        
+                        <h3 class="border-bottom border-gray pb-2">Stopword List</h3>
+                        
+                        <div class="card-body">
+                            
+                            <form>
+                                <div class="row">
+                                    <div class="col-md-8 form-group mb-3">
+                                        <label class="checkbox checkbox-primary" >
+                                            <textarea id="corrections" name="w3review" rows="20" cols="100"></textarea>
+                                        </label>
+                                    </div>
+
+                                    <div class="col-md-4 form-group mb-3">
+                                        
+                                            Select a stopword source:
+                                            <select name="stopwords_selection" id="correction_list" onChange='load_selected_correction();'></select>
+                                              
+                                            <button class="btn btn-primary ripple m-1" type="button" id='savesame' onclick="save_corrections();">Save As New Source</button>
+                                              
+                                            <input type='text' id='corrections_file_name'></label>
+                                              
+                                         
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                        
+                    </div>
+
+                    <div id="step-6"  >
+                        <h3 class="border-bottom border-gray pb-2">Give a glorious name to the processor</h3>
+                        Call my Glorious Processor: <input type="text" id = 'glorious_name'></input>
+                       
+                    </div>
+
+
+                </div>
+            </div>
+    
+
+
+
+<button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="analyze();">Analyze</button>
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
+<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+
+
+<style>
+  
+
+    #savesame,
+    #saveas {
+        float: left;
+        width: 50%;
+   
+    }
+    </style>
+
+
+<script>
+ 
+    var tracks = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:get_tracks" %}',
+        dataType: 'json'
+        
+    }).responseJSON;
+
+    var table_track = $('#tracker_table').DataTable({
+            data: tracks,
+
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
+    
+    function analyze(){
+
+        glorious_name = document.getElementById('glorious_name').value;
+
+        var check_for_duplicate_name = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {
+                'which': 'processor_name_checker',
+                'name': glorious_name
+            }
+            
+        }).responseJSON;
+
+        if(check_for_duplicate_name['status'] == 0 || glorious_name == ''){
+            alert('Name is either empty of there is already a process with the same name. Change process name in Step 6.')
+        } else {
+            var arr = []
+            var rows_selected = table_track.column(0).checkboxes.selected();
+            $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+            
+
+            var arr_preproc = []
+            $('input.preproc:checkbox:checked').each(function () {
+                arr_preproc.push($(this).val());
+            });
+        
+
+            var arr_nlp = []
+            $('input.nlp:radio:checked').each(function () {
+                arr_nlp.push($(this).val());
+            });
+
+            stopwords = document.getElementById('stopword_list').value
+            corrections = document.getElementById('correction_list').value
+            
+            var tracks = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'sentiment_analyzer',
+                    'name': glorious_name,
+                    'tracker': arr.toString(),
+                    'preproc': arr_preproc.toString(),
+                    'nlp': arr_nlp.toString(),
+                    'stopwords': stopwords,
+                    'corrections': corrections
+                }
+                
+            }).responseJSON;
+
+            alert(tracks['status'])
+        }
+        
+    }
+
+
+
+    var stopwords_all = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_all_stopwords_files'
+                }
+                
+            }).responseJSON;
+
+ 
+    
+    var stopword_list = document.getElementById("stopword_list"); 
+
+    for (i = stopword_list.length-1; i >= 0; i--) {
+        stopword_list.options[i] = null;
+        }
+     
+    $.each(stopwords_all['sw_names'], function(i, p) {
+        var el = document.createElement("option");
+        el.textContent = p;
+        el.value = p;
+        stopword_list.appendChild(el);
+    });
+  
+    var stopword_text = document.getElementById("stopwords"); 
+    
+    for (var i = 0; i < stopwords_all['sw_default'].length; i++) {
+        stopword_text.value  = stopword_text.value + stopwords_all['sw_default'][i] + '\n'
+    }
+    
+    function save_stopwords(){
+        var sw_name = document.getElementById("stopword_file_name").value; 
+        var stopwords_all = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_all_stopwords_files'
+                }
+                
+            }).responseJSON;
+        var arr_sw = []
+
+        $.each(stopwords_all['sw_names'], function(i, p) {
+           arr_sw.push(p)
+        });
+
+        if(sw_name == ''){
+            alert('Please enter a name')
+        }
+        else if(sw_name == 'default_stopwords'){
+            alert('Please choose a different name than default_stopwords')
+        }
+        else if(arr_sw.includes(sw_name)){
+            alert('There is already a stopword file with this name!. Please choose a different name.')
+        }
+        else {
+            stopwords = document.getElementById('stopwords').value
+            
+            var save_stopwords = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'save_stopwords',
+                    'sw': stopwords,
+                    'name': sw_name
+                }
+                
+            }).responseJSON;
+
+            if(save_stopwords['status'] == 0){
+                alert('This stopwords cannot be saved. Please check the list!')
+            } else {
+                 
+                alert('Saved successfully');
+                var stopwords_all = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {
+                        'which': 'get_all_stopwords_files'
+                    }
+                }).responseJSON;
+
+                
+
+                var stopword_list = document.getElementById("stopword_list"); 
+
+
+                for (i = stopword_list.length-1; i >= 0; i--) {
+                    stopword_list.options[i] = null;
+                    }
+
+                $.each(stopwords_all['sw_names'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    stopword_list.appendChild(el);
+               
+
+                });
+            }
+        }
+    }
+
+
+    function load_selected_stopword(){
+        
+        var sw_name = document.getElementById("stopword_list").value; 
+        var stopwords_retrieved = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_selected_stopwords',
+                    'name': sw_name
+                }
+                
+            }).responseJSON;
+
+        if(stopwords_retrieved['status'] == 0){
+            alert('Cannot load!')
+        } else {
+            var stopword_text = document.getElementById("stopwords"); 
+            stopword_text.value = ''
+            for (var i = 0; i < stopwords_retrieved['data'].length; i++) {
+                stopword_text.value  = stopword_text.value + stopwords_retrieved['data'][i] + '\n'
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    var corrections_all = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_all_corrections_files'
+                }
+                
+            }).responseJSON;
+
+ 
+    
+    var correction_list = document.getElementById("correction_list"); 
+
+    for (i = correction_list.length-1; i >= 0; i--) {
+        correction_list.options[i] = null;
+        }
+     
+    $.each(corrections_all['cor_names'], function(i, p) {
+        var el = document.createElement("option");
+        el.textContent = p;
+        el.value = p;
+        correction_list.appendChild(el);
+    });
+  
+   
+    function save_corrections(){
+        var cor_name = document.getElementById("corrections_file_name").value; 
+        var corrections_all = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_all_corrections_files'
+                }
+                
+            }).responseJSON;
+        var arr_cor = []
+
+        $.each(corrections_all['cor_names'], function(i, p) {
+            arr_cor.push(p)
+        });
+
+        if(cor_name == ''){
+            alert('Please enter a name')
+        }
+        else if(arr_cor.includes(cor_name)){
+            alert('There is already a correction file with this name!. Please choose a different name.')
+        }
+        else {
+            corrections = document.getElementById('corrections').value
+
+            var to_python = ''
+            var temp = corrections.split("\n");
+            error = false
+
+            for (var i=0;i<temp.length;i++)
+            {
+                
+                try {
+                    var splitted = temp[i].split(":");
+                    if(splitted.length != 2){
+                        error = true
+                    }
+                     
+                    to_python = to_python + "['" + splitted[0].trim() + "', '" + splitted[1].trim() + "'],"
+                } catch (error) {
+                    error = true
+                }
+            }
+            to_python = '[' + to_python.slice(0, -1) + ']'
+            alert(to_python)
+            if(!error){
+
+                var save_corrections = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {
+                        'which': 'save_corrections',
+                        'cor': to_python,
+                        'name': cor_name
+                    }
+                    
+                }).responseJSON;
+
+                if(save_corrections['status'] == 0){
+                    alert('This corrections cannot be saved. Please check the list!')
+                } else {
+                    
+                    alert('Saved successfully');
+                    var corrections_all = $.ajax({
+                        type: 'POST',
+                        async: false,
+                        url: '{% url "analyzer:call_ajax" %}',
+                        dataType: 'json',
+                        data: {
+                            'which': 'get_all_corrections_files'
+                        }
+                    }).responseJSON;
+
+                    
+
+                    var correction_list = document.getElementById("correction_list"); 
+
+
+                    for (i = correction_list.length-1; i >= 0; i--) {
+                        correction_list.options[i] = null;
+                        }
+
+                    $.each(corrections_all['cor_names'], function(i, p) {
+                        var el = document.createElement("option");
+                        el.textContent = p;
+                        el.value = p;
+                        correction_list.appendChild(el);
+                
+
+                    });
+                }
+            } else {
+                alert('Error in corrections')
+            }
+        }
+    }
+
+
+    function load_selected_correction(){
+        
+        var cor_name = document.getElementById("correction_list").value; 
+        var corrections_retrieved = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_selected_corrections',
+                    'name': cor_name
+                }
+                
+            }).responseJSON;
+
+        if(corrections_retrieved['status'] == 0){
+            alert('Cannot load!')
+        } else {
+            var correction_text = document.getElementById("corrections"); 
+            correction_text.value = corrections_retrieved['data']
+        }
+
+    }
+
+</script>
+
+
+{% endblock %}
+</div>
+
