@@ -180,7 +180,7 @@ def get_user_table(request):
 @csrf_exempt 
 def get_tracks(request):
     table = pd.read_sql_query("""
-        select id, query_name, query, frequency_level1, frequency_level2, fetch_size from tracker_tracker
+        select id, concat(query_name,'(id=',id::varchar(255),')') as query_name, query, frequency_level1, frequency_level2, fetch_size from tracker_tracker
     """, engine)
     tracks = []
     for index, row in table.iterrows():
@@ -194,6 +194,9 @@ def domain_entity_analysis(request):
 
 def tweet_preprocessor(request):
     return render(request, 'analyzer/tweet_preprocessor.html')
+
+def network_analyzer(request):
+    return render(request, 'analyzer/network_analyzer.html')
 
 @csrf_exempt 
 def call_ajax(request):
@@ -232,14 +235,13 @@ def call_ajax(request):
         name = request.POST.get('name')
         tracker = request.POST.get('tracker')
         preproc = request.POST.get('preproc')
-        nlp = request.POST.get('nlp')
         stopwords = request.POST.get('stopwords')
         corrections = request.POST.get('corrections')
         
         if not tracker:
             arr = 'null'
         
-        return create_preprocess_tweets_job(request.user, name, tracker, preproc, nlp, stopwords, corrections)
+        return create_preprocess_tweets_job(request.user, name, tracker, preproc, stopwords, corrections)
 
     elif which == 'processor_name_checker':
         status = 1
@@ -303,10 +305,130 @@ def call_ajax(request):
             return JsonResponse({'status': 1, 'data': to_javascript})
         except:
             return JsonResponse({'status': 0, 'data': 0})
+    
+    elif which == 'get_processors':
+        print('GET PROCESSORS: ', request.user, request.user.id)
+        
+        table = pd.read_sql_query("""select id, name, tracker, stopwords, corrections, preproc from analyzer_processor_nlp where user_id ='{0}' """.format(request.user.id), engine)
+        procs = []
+        for index, row in table.iterrows():
+            procs.append([row['id'], row['name'],  row['tracker'], row['stopwords'], row['corrections'], row['preproc']])
+            print('YES')
+        print(procs)
+        return JsonResponse(procs, safe=False) 
+
+
             
+    elif which == 'get_chord_chart_data_for_domains':
+        table = pd.read_sql_query("""
+            with base as (
+                select distinct tweet_id, domain_name 
+                from df_annotations a, (select distinct domain_id, domain_name from df_annotation_domain) b 
+                where a.domain_id = b.domain_id
+            )
+            select a.domain_name as from, b.domain_name as to, count(*) as value    
+            from base a,  base b
+            where a.tweet_id = b.tweet_id and a.domain_name < b.domain_name
+            group by a.domain_name, b.domain_name
+         """, engine)
+        return JsonResponse({'data':table.to_dict(orient='records')})
+    
+    elif which == 'get_chord_chart_data_for_domains2':
+        #temp = pd.read_sql_query("""
+        #    select a.domain_id as id, domain_name as label, count(*) as value 
+        #    from df_annotations a, (select distinct domain_id, domain_name from df_annotation_domain) b 
+        #    where a.domain_id = b.domain_id
+        #    group by a.domain_id, domain_name
+        # """, engine)
+        
+        temp2 = pd.read_sql_query("""
+            with base as (
+                select tag as label, count(distinct a.tweet_id) as value 
+                from df_entities a, (select tweet_id, count(distinct tag) as tot from df_entities where category = 'hashtags' and lower(tag) not like '%covid%' group by tweet_id having count(*) >= 3) b
+                where a.tweet_id = b.tweet_id and category = 'hashtags' and lower(tag) not like '%covid%' 
+                group by tag having count(*) >= 10
+            ),
+            base2 as (
+                select 
+                    *,
+                    row_number() over (order by label) as id
+                from 
+                    base
+            ),
+            base3 as (
+                select 
+                    a.tag as _from, b.tag as _to, count(*) as tot
+                from 
+                    df_entities a
+                inner join 
+                    df_entities b on a.tweet_id = b.tweet_id and b.category = 'hashtags' and a.tag < b.tag
+                where 
+                    a.category = 'hashtags' 
+                group by 
+                    a.tag, b.tag
+            )
+            select b.id as from, c.id as to, tot as value
+            from base3 a, base2 b, base2 c
+            where a._from = b.label and a._to = c.label
+            
+        limit 500""", engine)
+
+        temp = pd.read_sql_query("""
+            with base as (
+                select tag as label, count(distinct a.tweet_id) as value 
+                from df_entities a, (select tweet_id, count(distinct tag) as tot from df_entities where category = 'hashtags' and lower(tag) not like '%covid%' group by tweet_id having count(*) >= 3) b
+                where a.tweet_id = b.tweet_id and category = 'hashtags' and lower(tag) not like '%covid%' 
+                group by tag having count(*) >= 10
+            )
+            select 
+                *,
+                row_number() over (order by label) as id
+            from 
+	            base
+         """, engine)
+
+        return JsonResponse({'data':temp.to_dict(orient='records'), 'data2':temp2.to_dict(orient='records')})
+
+    elif which == 'get_word_freqs_and_bigrams_for_check':
+        import collections
+        ids = request.POST.get('selected')
+        temp = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                select tweet_text from df_tweets_processed a, base b where a.processor_name = b.name
+
+                """.format(ids), engine)
+        name = pd.read_sql_query("""select distinct name from analyzer_processor_nlp where id in ({0})""".format(ids), engine)
+        
+
+        words = pd.Series(' '.join(temp.tweet_text).split()).value_counts()[:1000].rename_axis('word').reset_index(name='count')
+        arr = []
+        for index, row in words.iterrows():
+            arr.append([name['name'][0], row['word'], row['count']])
+
+        bigram = []
+        res = [(x +' '+ i.split()[j + 1]) for i in temp['tweet_text'] for j, x in enumerate(i.split()) if j < len(i.split()) - 1] 
+        res = collections.Counter(res)
+        res = res.most_common(1000)
+        
+        for item in res:
+            bigram.append([name['name'][0], item[0], item[1]]) 
+        
+        return JsonResponse({'word_count': arr, 'bigram': bigram})  
+       
+    elif which == 'get_images':
+        temp = pd.read_sql_query("""
+                select url, count(*) as total from df_media
+                where type = 'photo'
+                group by url
+                
+                having count(*) >= 10
+                order by count(*) desc
+                """, engine)
+        print(temp.to_dict(orient='records'))
+        return JsonResponse(temp.to_dict(orient='records'), safe=False)
 
 def save_stopword(user, name, sw):
-    stopwords_file = '/usr/src/mainapp/' + uuid.uuid4().hex[:35].upper() + '.pckl'
+    stopwords_file = '/usr/src/mainapp/' + name + '.pckl'
     try:
         record = {}
         stopwords = sw.split('\n')
@@ -374,7 +496,7 @@ def get_all_corrections_files():
         
 
 
-def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, corrections):
+def create_preprocess_tweets_job(user, name, tracker, preproc, stopwords, corrections):
     print(tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker)
     sw = True
     cor = True
@@ -385,7 +507,6 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, c
                                 name=name,
                                 tracker=tracker,
                                 preproc=preproc,
-                                nlp=nlp,
                                 stopwords=stopwords,
                                 corrections=corrections)
 
@@ -394,17 +515,28 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, c
                     proc_name=name,
                     tracker=tracker,
                     preproc=preproc,
-                    nlp=nlp,
                     stopwords_file=stopwords,
                     corrections_file=corrections,
-                    name=name,
-                    #schedule_type = 'I',
+                    
                     repeats = 1
                     )
     
     return JsonResponse({'status': str(user)})
        
 
-
+def tweet_preprocessor_delete(request):
+    if(request.method == "POST"):
+        ids = request.POST.get('dummy')
+        try:
+            conn = engine.connect()
+            print('DELETING ', ids)
+            conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(ids))
+            return render(request, 'analyzer/tweet_preprocessor.html', {'result':'OK'})
+        except Exception as e:
+            
+            return render(request, 'analyzer/tweet_preprocessor.html', {'result':str(e)})
+   
+def tweet_media_analyzer(request):
+    return render(request, 'analyzer/tweet_media_analyzer.html')
 
 

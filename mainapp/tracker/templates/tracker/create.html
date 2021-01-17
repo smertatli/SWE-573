@@ -39,30 +39,29 @@
               <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
               
           </ul>
-          <div class="btn-toolbar sw-toolbar sw-toolbar-top justify-content-end" >
-              <div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">ff</button><button class="btn btn-danger">Cancel</button></div></div><div class="sw-container tab-content" style="min-height: 214px;">
-              <div id="step-1" class="tab-pane step-content" style="display: block;">
-                <h3 class="border-bottom border-gray pb-2">Specify Query Name</h3>
+          <div >
+            <div id="step-1">
+                <h3 class="border-bottom border-gray pb-2"><h1><b>Specify Query Name</b></h1></h3>
                 <input type='text' class="col-md-12" value ='For example: covid19_related_tweets' id='name_query'> </input>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                <h3 class="border-bottom border-gray pb-2"></h3>
-                  <h3 class="border-bottom border-gray pb-2">Specify your query by keyword, hashtags, and phrases</h3>
-                      <input type='text' class="col-md-12" value ='For example: (covid OR covid19)' id='user_query'> </input>
-              </div>
-              <div id="step-2" class="tab-pane step-content" >
-                  <h3 class="border-bottom border-gray pb-2">Specify collection frequencies:</h3>
-                  <div class="row">
+                
+                <div class="separator-breadcrumb border-top"></div>
+                <div class="separator-breadcrumb border-top"></div>
+                <div class="separator-breadcrumb border-top"></div>
+                <div class="separator-breadcrumb border-top"></div>
+
+                <h3 class="border-bottom border-gray pb-2"><h1><b>Specify your query by keyword, hashtags, and phrases</b></h1></h3>
+                <input type='text' class="col-md-12" value ='For example: (covid OR covid19)' id='user_query'> </input>
+            </div>
+            <div id="step-2"  >
+              <h3 class="border-bottom border-gray pb-2"><h1><b>Specify collection frequencies:</b></h1></h3>
+                <div class="row">
                      
 
 
                     <div class="col-md-4">
                       <div class="card mb-4">
                           <div class="card-body">
-                              <div class="card-title">Level 1</div>
+                              <div class="card-title"><h1><b>Level 1</b></h1></div>
                               <label class="radio radio-outline-primary">
                                   <input type="radio" name="level1" value='minute' onclick="myFunction()"><span>Minutely</span><span class="checkmark"></span>
                               </label>
@@ -77,7 +76,7 @@
                   <div class="col-md-4" display='none' id='level2_minute'>
                     <div class="card mb-4">
                         <div class="card-body">
-                            <div class="card-title">Level 2</div>
+                            <div class="card-title"><h1><b>Level 2</b></h1></div>
                             <label class="radio radio-outline-primary">
                                 <input type="radio" name="level2_minute" value=1><span>1-Minute</span><span class="checkmark"></span>
                             </label>
@@ -98,7 +97,7 @@
                 <div class="col-md-4" id='level2_hour'>
                   <div class="card mb-4">
                       <div class="card-body">
-                          <div class="card-title">Level 2</div>
+                          <div class="card-title"><h1><b>Level 2</b></h1></div>
                           <label class="radio radio-outline-primary">
                               <input type="radio" name="level2_hour" value=1><span>1-Hour</span><span class="checkmark"></span>
                           </label>
@@ -117,7 +116,7 @@
                   <div class="col-md-4" display='none' id='level2_size'>
                     <div class="card mb-4">
                         <div class="card-body">
-                            <div class="card-title">Fetch Size</div>
+                            <div class="card-title"><h1><b>Fetch Size</b></h1></div>
                             <label class="radio radio-outline-primary">
                                 <input type="radio" name="level2_size" value=10><span>10</span><span class="checkmark"></span>
                             </label>
@@ -135,9 +134,16 @@
                   
                   </div>
               </div>
-              <div id="step-3" class="tab-pane step-content">
-               
-                <input type="text" name="daterange" value="01/01/2021 - 01/15/2021" />
+              <div id="step-3">
+                <h1><b>Estimated number of tweets:</b></h1>
+                
+                <div class="col-md-12">
+                  <div class="card mb-12">
+                      <div class="card-body">
+                        <input type="text" name="daterange" value="01/01/2021 - 01/15/2021" />   
+                      </div>
+                  </div>
+              </div>
               
                 <div class="col-md-12">
                   <div class="card mb-12">
@@ -151,7 +157,7 @@
 
               </div>
            
-          </div><div class="btn-toolbar sw-toolbar sw-toolbar-bottom justify-content-end"><div class="btn-group mr-2 sw-btn-group" role="group"><button class="btn btn-secondary sw-btn-prev disabled" type="button">Previous</button><button class="btn btn-secondary sw-btn-next" type="button">Next</button></div><div class="btn-group mr-2 sw-btn-group-extra" role="group"><button class="btn btn-info">Finish</button><button class="btn btn-danger">Cancel</button></div></div>
+          </div>
       </div>
   </div>
 </div>
@@ -222,7 +228,7 @@
             
 
  
-        alert(result['tracker_created'], result['task_created'], result['error'] )
+        alert(result['error'] )
         divis = document.getElementById('success_alert')
         divis.style.visibility='visible'
             
@@ -238,7 +244,7 @@
     }, function(start, end, label) {
       console.log("A new date selection was made: " + start.format('YYYY-MM-DD') + ' to ' + end.format('YYYY-MM-DD'));
 
-      const diffTime = Math.abs(end - start);
+      const diffTime = Math.abs(end - start) + 1;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
       document.getElementById("estimated_number_of_tweets").innerHTML = diffDays * 100
       document.getElementById("date_start").innerHTML = start.format('YYYY-MM-DD')

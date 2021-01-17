@@ -1,0 +1,428 @@
+{% extends 'main.html' %} 
+
+{% load static %} 
+
+
+
+{% block content %}
+
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
+<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
+
+
+{% csrf_token %} 
+
+
+ 
+            <!--  SmartWizard html -->
+            <div id="smartwizard" class="sw-main sw-theme-default" >
+                <ul class="nav nav-tabs step-anchor">
+                    <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>Preprocessing Options</small></a></li>
+                    <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>NLP Options</small></a></li>
+                    <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>Stopwords Options</small></a></li>
+                    <li class="nav-item"><a href="#step-5" class="nav-link">Step 5<br><small>Custom word corrections</small></a></li>
+                    <li class="nav-item"><a href="#step-6" class="nav-link">Step 6<br><small>Give a name to processor</small></a></li>
+                </ul>
+                <div>
+                    <div id="step-1">
+                        <h3 class="border-bottom border-gray pb-2"><b>Select a data source below</b></h3>
+                            <table id="tracker_table" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                      <th></th>
+                                      <th>query_name</th>
+                                      <th>query</th>
+                                      <th>frequency_level1</th>
+                                      <th>frequency_level2</th>
+                                      <th>fetch_size</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
+                    </div>
+                    <div id="step-2" class='row'>
+                        <h3 class="border-bottom border-gray pb-2"><b>Select Preprocessing Options</b></h3>
+                         
+                        
+                    </div>
+                    <div id="step-3"  >
+                        <h3 class="border-bottom border-gray pb-2"><b>Select Sentiment Analysis Options</b></h3>
+                        
+                    </div>
+                    <div id="step-4"  >
+                        <h3 class="border-bottom border-gray pb-2"><b>Select Stopword List</b></h3>
+                        
+                        
+                    </div>
+                    <div id="step-5"  >
+                        
+                        
+                        <h3 class="border-bottom border-gray pb-2"><b>Select Customer Correction List</b></h3>
+                        
+                        
+                        
+                    </div>
+
+                    <div id="step-6"  >
+                        <h3 class="border-bottom border-gray pb-2"><b>Give a glorious name to the processor</b></h3>
+                       
+                    </div>
+
+
+                </div>
+            </div>
+    
+
+
+
+<button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="analyze();">Analyze</button>
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
+<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+
+
+<style>
+  
+
+    #savesame,
+    #saveas {
+        float: left;
+        width: 50%;
+   
+    }
+    </style>
+
+
+<script>
+ 
+    var tracks = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:get_tracks" %}',
+        dataType: 'json'
+        
+    }).responseJSON;
+
+    var table_track = $('#tracker_table').DataTable({
+            data: tracks,
+
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
+    
+   
+
+</script>
+
+
+
+
+<style>
+
+
+    body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
+
+    #chartdiv {
+    width: 100%;
+    height: 800px;
+    }
+    </style>
+    
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    
+    <!-- Chart code -->
+<script>
+   
+    var domains = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:call_ajax" %}',
+        dataType: 'json',
+        data: {'which': 'get_chord_chart_data_for_domains'}
+        
+    }).responseJSON;
+
+
+
+
+    /**
+ * ---------------------------------------
+ * This demo was created using amCharts 4.
+ * 
+ * For more information visit:
+ * https://www.amcharts.com/
+ * 
+ * Documentation is available at:
+ * https://www.amcharts.com/docs/v4/
+ * ---------------------------------------
+ */
+
+// Themes begin
+am4core.useTheme(am4themes_animated);
+// Themes end
+
+var chart = am4core.create("chartdiv", am4charts.ChordDiagram);
+
+// colors of main characters
+chart.colors.saturation = 0.45;
+chart.colors.step = 1;
+var colors = {
+    Rachel:chart.colors.next(),
+    Monica:chart.colors.next(),
+    Phoebe:chart.colors.next(),
+    Ross:chart.colors.next(),
+    Joey:chart.colors.next(),
+    Chandler:chart.colors.next()
+}
+
+// data was provided by: https://www.reddit.com/user/notrudedude
+
+chart.data = domains['data']
+
+
+
+chart.dataFields.fromName = "from";
+chart.dataFields.toName = "to";
+chart.dataFields.value = "value";
+
+
+chart.nodePadding = 0.5;
+chart.minNodeSize = 0.01;
+chart.startAngle = 80;
+chart.endAngle = chart.startAngle + 360;
+chart.sortBy = "value";
+chart.fontSize = 10;
+
+var nodeTemplate = chart.nodes.template;
+nodeTemplate.readerTitle = "Click to show/hide or drag to rearrange";
+nodeTemplate.showSystemTooltip = true;
+nodeTemplate.propertyFields.fill = "color";
+nodeTemplate.tooltipText = "{name}'s connections: {total}";
+
+// when rolled over the node, make all the links rolled-over
+nodeTemplate.events.on("over", function(event) {    
+    var node = event.target;
+    node.outgoingDataItems.each(function(dataItem) {
+        if(dataItem.toNode){
+            dataItem.link.isHover = true;
+            dataItem.toNode.label.isHover = true;
+        }
+    })
+    node.incomingDataItems.each(function(dataItem) {
+        if(dataItem.fromNode){
+            dataItem.link.isHover = true;
+            dataItem.fromNode.label.isHover = true;
+        }
+    }) 
+
+    node.label.isHover = true;   
+})
+
+// when rolled out from the node, make all the links rolled-out
+nodeTemplate.events.on("out", function(event) {
+    var node = event.target;
+    node.outgoingDataItems.each(function(dataItem) {        
+        if(dataItem.toNode){
+            dataItem.link.isHover = false;                
+            dataItem.toNode.label.isHover = false;
+        }
+    })
+    node.incomingDataItems.each(function(dataItem) {
+        if(dataItem.fromNode){
+            dataItem.link.isHover = false;
+           dataItem.fromNode.label.isHover = false;
+        }
+    })
+
+    node.label.isHover = false;
+})
+
+var label = nodeTemplate.label;
+label.relativeRotation = 90;
+
+label.fillOpacity = 0.4;
+let labelHS = label.states.create("hover");
+labelHS.properties.fillOpacity = 1;
+
+nodeTemplate.cursorOverStyle = am4core.MouseCursorStyle.pointer;
+// this adapter makes non-main character nodes to be filled with color of the main character which he/she kissed most
+nodeTemplate.adapter.add("fill", function(fill, target) {
+    let node = target;
+    let counters = {};
+    let mainChar = false;
+    node.incomingDataItems.each(function(dataItem) {
+        if(colors[dataItem.toName]){
+            mainChar = true;
+        }
+
+        if(isNaN(counters[dataItem.fromName])){
+            counters[dataItem.fromName] = dataItem.value;
+        }
+        else{
+            counters[dataItem.fromName] += dataItem.value;
+        }
+    })
+    if(mainChar){
+        return fill;
+    }
+
+    let count = 0;
+    let color;
+    let biggest = 0;
+    let biggestName;
+
+    for(var name in counters){
+        if(counters[name] > biggest){
+            biggestName = name;
+            biggest = counters[name]; 
+        }        
+    }
+    if(colors[biggestName]){
+        fill = colors[biggestName];
+    }
+  
+    return fill;
+})
+
+// link template
+var linkTemplate = chart.links.template;
+linkTemplate.strokeOpacity = 0;
+linkTemplate.fillOpacity = 0.15;
+linkTemplate.tooltipText = "{fromName} & {toName}:{value.value}";
+
+var hoverState = linkTemplate.states.create("hover");
+hoverState.properties.fillOpacity = 0.7;
+hoverState.properties.strokeOpacity = 0.7;
+
+// data credit label
+var creditLabel = chart.chartContainer.createChild(am4core.TextLink);
+creditLabel.text = "Data source: notrudedude";
+creditLabel.url = "https://www.reddit.com/user/notrudedude";
+creditLabel.y = am4core.percent(99);
+creditLabel.x = am4core.percent(99);
+creditLabel.horizontalCenter = "right";
+creditLabel.verticalCenter = "bottom";
+
+
+</script>
+   
+
+
+
+<style>
+    #mynetwork {
+    width: 100%;
+    height: 900px;
+    border: 1px solid lightgray;
+    }
+
+</style>
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script>
+    
+    var nodes = null;
+    var edges = null;
+    var network = null;
+
+    var domains = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:call_ajax" %}',
+        dataType: 'json',
+        data: {'which': 'get_chord_chart_data_for_domains2'}
+        
+    }).responseJSON;
+
+    function draw() {
+    // create people.
+    // value corresponds with the age of the person
+    nodes = domains['data']
+
+    // create connections between people
+    // value corresponds with the amount of contact between two people
+    edges = domains['data2']
+
+    // Instantiate our network object.
+    var container = document.getElementById("mynetwork");
+    var data = {
+        nodes: nodes,
+        edges: edges,
+    };
+    var options = {
+        nodes: {
+        shape: "dot",
+        scaling: {
+            customScalingFunction: function (min, max, total, value) {
+            return value / total;
+            },
+            min: 5,
+            max: 150,
+        },
+        },
+        physics: {
+            stabilization: true,
+        },
+        layout: {
+            randomSeed: 191006,
+            improvedLayout: true
+        }
+    };
+    network = new vis.Network(container, data, options);
+    }
+
+    window.addEventListener("load", () => {
+    draw();
+    });
+
+</script>
+
+<div class="col-md-12">
+    <div class="card mb-4">
+        <div class="card-body">
+            <div id="chartdiv"></div>
+            <div id="mynetwork"></div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+</div>
+
+
+
+
+

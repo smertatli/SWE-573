@@ -16,6 +16,9 @@ urlpatterns = [
     path('domain_entity_analysis_ajax2/', views.get_entity_for_graph, name='get_entity_for_graph'),
     path('call_ajax/', views.call_ajax, name='call_ajax'),
     path('tweet_preprocessor/', views.tweet_preprocessor, name='tweet_processor'),
+    path('network_analyzer/', views.network_analyzer, name='network_analyzer'),
+    path('tweet_preprocessor_delete/', views.tweet_preprocessor_delete, name='tweet_preprocessor_delete'),
+    path('tweet_media_analyzer/', views.tweet_media_analyzer, name='tweet_media_analyzer'),
     
 
     
