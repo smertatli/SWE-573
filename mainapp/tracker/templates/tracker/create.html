@@ -29,10 +29,13 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
-<div class="row">
-  <div class="col-md-12" >
+<div class="col-md-12" >
+  <div class="card mb-4" id = 'deneme_renk'>
+      <div class="card-body" >
+       <div class="card-title mb-3"><h1><b>Create Track</b></h1></div>
       <!--  SmartWizard html -->
       <div id="smartwizard" class="sw-main sw-theme-default" >
+        
           <ul class="nav nav-tabs step-anchor">
               <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>Query Specfication</small></a></li>
               <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
@@ -41,19 +44,15 @@
           </ul>
           <div >
             <div id="step-1">
-                <h3 class="border-bottom border-gray pb-2"><h1><b>Specify Query Name</b></h1></h3>
+                <h3 class="border-bottom border-gray pb-2"><h3><b>Specify Query Name</b></h3></h3>
                 <input type='text' class="col-md-12" value ='For example: covid19_related_tweets' id='name_query'> </input>
-                
-                <div class="separator-breadcrumb border-top"></div>
-                <div class="separator-breadcrumb border-top"></div>
-                <div class="separator-breadcrumb border-top"></div>
-                <div class="separator-breadcrumb border-top"></div>
+               
 
-                <h3 class="border-bottom border-gray pb-2"><h1><b>Specify your query by keyword, hashtags, and phrases</b></h1></h3>
+                <h3 class="border-bottom border-gray pb-2"><h3><b>Specify your query by keyword, hashtags, and phrases</b></h3></h3>
                 <input type='text' class="col-md-12" value ='For example: (covid OR covid19)' id='user_query'> </input>
             </div>
             <div id="step-2"  >
-              <h3 class="border-bottom border-gray pb-2"><h1><b>Specify collection frequencies:</b></h1></h3>
+              <h3 class="border-bottom border-gray pb-2"><h3><b>Specify collection frequencies:</b></h3></h3>
                 <div class="row">
                      
 
@@ -61,7 +60,7 @@
                     <div class="col-md-4">
                       <div class="card mb-4">
                           <div class="card-body">
-                              <div class="card-title"><h1><b>Level 1</b></h1></div>
+                              <div class="card-title"><h3><b>Level 1</b></h3></div>
                               <label class="radio radio-outline-primary">
                                   <input type="radio" name="level1" value='minute' onclick="myFunction()"><span>Minutely</span><span class="checkmark"></span>
                               </label>
@@ -76,7 +75,7 @@
                   <div class="col-md-4" display='none' id='level2_minute'>
                     <div class="card mb-4">
                         <div class="card-body">
-                            <div class="card-title"><h1><b>Level 2</b></h1></div>
+                            <div class="card-title"><h3><b>Level 2</b></h3></div>
                             <label class="radio radio-outline-primary">
                                 <input type="radio" name="level2_minute" value=1><span>1-Minute</span><span class="checkmark"></span>
                             </label>
@@ -97,7 +96,7 @@
                 <div class="col-md-4" id='level2_hour'>
                   <div class="card mb-4">
                       <div class="card-body">
-                          <div class="card-title"><h1><b>Level 2</b></h1></div>
+                          <div class="card-title"><h3><b>Level 2</b></h3></div>
                           <label class="radio radio-outline-primary">
                               <input type="radio" name="level2_hour" value=1><span>1-Hour</span><span class="checkmark"></span>
                           </label>
@@ -116,7 +115,7 @@
                   <div class="col-md-4" display='none' id='level2_size'>
                     <div class="card mb-4">
                         <div class="card-body">
-                            <div class="card-title"><h1><b>Fetch Size</b></h1></div>
+                            <div class="card-title"><h3><b>Fetch Size</b></h3></div>
                             <label class="radio radio-outline-primary">
                                 <input type="radio" name="level2_size" value=10><span>10</span><span class="checkmark"></span>
                             </label>
@@ -135,7 +134,7 @@
                   </div>
               </div>
               <div id="step-3">
-                <h1><b>Estimated number of tweets:</b></h1>
+                <h3><b>Estimated number of tweets:</b></h3>
                 
                 <div class="col-md-12">
                   <div class="card mb-12">
@@ -158,18 +157,79 @@
               </div>
            
           </div>
+          <button class="btn btn-primary btn-block mb-3"  type="button" onclick="createTrack()">Create Track</button>
+
       </div>
+      
   </div>
+</div>
 </div>
 
 <div id='date_start'></div>
 <div id='date_end'></div>
 
+
+
+
+
+
+
+
+<div class="col-md-12" >
+  <div class="card mb-4" id = 'deneme_renk'>
+      <div class="card-body" >
+          <div class="card-title mb-3"><h1><b>All Processors</b></h1></div>
+          <table id="tracker_table" class="display" cellspacing="0" width="100%" >
+              <thead>
+                  <tr>
+                      <th></th>
+                      <th>Username</th>
+                      <th>Query Name</th>
+                      <th>Status</th>
+                  
+                  </tr>
+              </thead>
+              <tfoot>
+                  <tr>
+                      <th></th>
+                      <th>Username</th>
+                      <th>Query Name</th>
+                      <th>Status</th>
+                  </tr>
+              </tfoot>
+              </table>
+    
+            
+      </div>
+      <div class='row'>
+          <div class="col-md-6">
+              <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Analyze Selected Processor</button>
+         </div>
+          <div class="col-md-6">
+              <form action="{% url 'analyzer:tweet_preprocessor_delete' %}" method="POST">
+                  {% csrf_token %}
+                  <input type="hidden"  id='dummy' name='dummy'></input>
+                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="delete_processors();">Delete Selected Processors</button>
+                  <div>{{ result }}</div>
+              </form>
+          </div>
+          
+      </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+
 <link rel="stylesheet" href="/static/dist-assets/css/plugins/sweetalert2.min.css" />
 <script src="/static/dist-assets/js/plugins/sweetalert2.min.js"></script>
 <script src="/static/dist-assets/js/scripts/sweetalert.script.min.js"></script>
 
-<button class="btn btn-success btn-block mb-3" id="alert-success" type="button" onclick="createTrack()">Create Track</button>
 
 
   <script>
@@ -199,41 +259,108 @@
         
         var name_query = document.getElementById("name_query").value;
         var query = document.getElementById("user_query").value;
-        var level1 = document.querySelector('input[name="level1"]:checked').value;
-        var level2 = '';
-        if(level1 == 'minute'){
-          level2 = document.querySelector('input[name="level2_minute"]:checked').value
-        } else {
-          level2 = document.querySelector('input[name="level2_hour"]:checked').value
+        var errors = ''
+        
+        try {
+          var level1 = document.querySelector('input[name="level1"]:checked').value;
+          if(level1 == 'minute'){
+            level2 = document.querySelector('input[name="level2_minute"]:checked').value
+          } else {
+            level2 = document.querySelector('input[name="level2_hour"]:checked').value
+          }
+        } catch (error) {
+          var level1 = false;
+          var level2 = false
+          errors = errors + 'Frequency, '
+           
         }
-        var fetch_size = document.querySelector('input[name="level2_size"]:checked').value;
+        
+        try {
+          var fetch_size = document.querySelector('input[name="level2_size"]:checked').value;
+        } catch (error) {
+          var fetch_size = false;
+          errors = errors + 'Fetch Size, '
+         
+        }
+
+
+      
         var date_start = document.getElementById("date_start").innerText;
+        if(date_start == ''){
+          var date_start = false
+          errors = errors + 'Start Date, '
+        }
+      
+      
+
+
+      
         var date_end = document.getElementById("date_end").innerText;
+        if(date_end == ''){
+          var date_end = false
+          errors = errors + 'End Date, '
+        }
+      
 
-        alert([name_query,query, level1, level2, fetch_size, date_start, date_end])
-        var result = $.ajax({
-                        type: 'POST',
-                        async: false,
-                        url: '{% url "tracker:create_track_ajax" %}',
-                        dataType: 'json',
-                        data: {'name':name_query,
-                               'query':query, 
-                               'level1':level1, 
-                               'level2':level2,
-                               'fetch_size':fetch_size,
-                               'date_start':date_start,
-                               'date_end':date_end
-                               }
-                    }).responseJSON;
-            
 
- 
-        alert(result['error'] )
-        divis = document.getElementById('success_alert')
-        divis.style.visibility='visible'
+        if(!(level1 && level2 && fetch_size && date_start && date_end)){
+          alert('Error in ' + errors)
+        }
+        else {
+
+          alert([name_query,query, level1, level2, fetch_size, date_start, date_end])
+          var result = $.ajax({
+                          type: 'POST',
+                          async: false,
+                          url: '{% url "tracker:create_track_ajax" %}',
+                          dataType: 'json',
+                          data: {'name':name_query,
+                                'query':query, 
+                                'level1':level1, 
+                                'level2':level2,
+                                'fetch_size':fetch_size,
+                                'date_start':date_start,
+                                'date_end':date_end
+                                }
+                      }).responseJSON;
+              
+
+  
+            if(result['error'] != 'None'){
+              alert(result['error'])
+            } else {
+              alert('successful')
+            }
+        }
             
 
     };
+
+
+    var tracks = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "tracker:get_tracks" %}',
+                    dataType: 'json'
+                }).responseJSON;
+    
+                
+    var table_processor = $('#tracker_table').DataTable({
+        data: tracks,
+        
+        'columnDefs': [
+            {
+                'targets': 0,
+                'checkboxes': {
+                    'selectRow': true
+                }
+            }
+        ],
+        'select': {
+            'style': 'multi'
+        },
+        'order': [[1, 'asc']]
+    });
     
 </script>
 
@@ -252,6 +379,7 @@
     });
   });
   </script>
+
 
 {% endblock %}
 

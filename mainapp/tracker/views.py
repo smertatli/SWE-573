@@ -13,6 +13,17 @@ from django_q.models import Schedule
 from datetime import timedelta
 from django.utils import timezone
 from datetime import datetime
+from sqlalchemy import create_engine
+
+db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
+settings.DATABASES['default']['USER'],
+settings.DATABASES['default']['PASSWORD'],
+settings.DATABASES['default']['HOST'],
+settings.DATABASES['default']['PORT'],
+settings.DATABASES['default']['NAME'],
+)
+
+engine = create_engine(db_connection_url)
 
 def create_track(request):
     return render(request, 'tracker/create.html')
@@ -21,7 +32,7 @@ def create_track(request):
 def create_track_ajax(request):
     tracker_created = False
     task_created = False
-    error = None
+    error = 'None'
     if request.method == "POST":
         exists = Tracker.objects.filter(query_name__exact = request.POST.get('name'))
         if(exists):
@@ -49,7 +60,7 @@ def create_track_ajax(request):
                                         )
                 tracker_created = True
                 task_created = create_task(name, query, frequency_level1, frequency_level2, fetch_size, date_start, date_end, manual=False)
-            except:
+            except Exception as e:
                 tracker_created = False
                 task_created = False
                 error = str(e)
@@ -100,6 +111,17 @@ def create_task(name, query, frequency_level1, frequency_level2, fetch_size, dat
             status = False
     return status
     
-
-def display_my_tracks(request):
-    return HttpResponse('OLDUĞ')
+@csrf_exempt
+def get_tracks(request):
+    table = pd.read_sql_query("""
+        select a.id, u.username, query_name, case when coalesce(repeats,0) != 0 then 'Active' else 'Inactive' end status
+        from tracker_tracker a
+        inner join auth_user u on a.user_id = u.id
+        left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0
+        """, engine)
+    
+    arr = []
+    for index, row in table.iterrows():
+        arr.append([row['id'], row['username'], row['query_name'], row['status']])
+    return JsonResponse(arr, safe=False)
+    

@@ -393,7 +393,7 @@ creditLabel.verticalCenter = "bottom";
         },
         },
         physics: {
-            stabilization: true,
+            stabilization: true
         },
         layout: {
             randomSeed: 191006,
@@ -401,10 +401,16 @@ creditLabel.verticalCenter = "bottom";
         }
     };
     network = new vis.Network(container, data, options);
+    network.on("stabilizationIterationsDone", function (params) {
+        network.stopSimulation();
+       
+    });
+
+    //network.stabilize(1000); 
     }
 
     window.addEventListener("load", () => {
-    draw();
+        draw();
     });
 
 </script>

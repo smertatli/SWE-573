@@ -343,10 +343,10 @@ def call_ajax(request):
         
         temp2 = pd.read_sql_query("""
             with base as (
-                select tag as label, count(distinct a.tweet_id) as value 
-                from df_entities a, (select tweet_id, count(distinct tag) as tot from df_entities where category = 'hashtags' and lower(tag) not like '%covid%' group by tweet_id having count(*) >= 3) b
-                where a.tweet_id = b.tweet_id and category = 'hashtags' and lower(tag) not like '%covid%' 
-                group by tag having count(*) >= 10
+                select lower(normalized_text) as label, count(distinct a.tweet_id) as value 
+                from df_entities a, (select tweet_id, count(distinct lower(normalized_text)) as tot from df_entities where category = 'annotations'  and query_name ='news_global'  group by tweet_id having count(*) >= 3) b
+                where a.tweet_id = b.tweet_id and category = 'annotations' and query_name ='news_global'
+                group by lower(normalized_text) having count(*) >= 1
             ),
             base2 as (
                 select 
@@ -357,28 +357,28 @@ def call_ajax(request):
             ),
             base3 as (
                 select 
-                    a.tag as _from, b.tag as _to, count(*) as tot
+                    lower(a.normalized_text) as _from, lower(b.normalized_text) as _to, count(*) as tot
                 from 
                     df_entities a
                 inner join 
-                    df_entities b on a.tweet_id = b.tweet_id and b.category = 'hashtags' and a.tag < b.tag
+                    df_entities b on a.tweet_id = b.tweet_id and b.category = 'annotations' and lower(a.normalized_text) < lower(b.normalized_text)
                 where 
-                    a.category = 'hashtags' 
+                    a.category = 'annotations' and a.query_name ='news_global' and b.query_name ='news_global'
                 group by 
-                    a.tag, b.tag
+                    lower(a.normalized_text), lower(b.normalized_text)
             )
             select b.id as from, c.id as to, tot as value
             from base3 a, base2 b, base2 c
             where a._from = b.label and a._to = c.label
             
-        limit 500""", engine)
+        limit 200""", engine)
 
         temp = pd.read_sql_query("""
             with base as (
-                select tag as label, count(distinct a.tweet_id) as value 
-                from df_entities a, (select tweet_id, count(distinct tag) as tot from df_entities where category = 'hashtags' and lower(tag) not like '%covid%' group by tweet_id having count(*) >= 3) b
-                where a.tweet_id = b.tweet_id and category = 'hashtags' and lower(tag) not like '%covid%' 
-                group by tag having count(*) >= 10
+                select lower(normalized_text) as label, count(distinct a.tweet_id) as value 
+                from df_entities a, (select tweet_id, count(distinct lower(normalized_text)) as tot from df_entities where category = 'annotations' and  query_name ='news_global'  group by tweet_id having count(*) >= 3) b
+                where a.tweet_id = b.tweet_id and category = 'annotations' and query_name ='news_global'
+                group by lower(normalized_text) having count(*) >= 1
             )
             select 
                 *,
@@ -517,8 +517,9 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, stopwords, correc
                     preproc=preproc,
                     stopwords_file=stopwords,
                     corrections_file=corrections,
-                    
-                    repeats = 1
+                    schedule_type='I',
+                    minutes = 1,
+                    repeats = 100000000
                     )
     
     return JsonResponse({'status': str(user)})

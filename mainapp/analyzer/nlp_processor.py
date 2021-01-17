@@ -55,81 +55,101 @@ def Processor(user_name, proc_name, tracker, preproc, stopwords_file, correction
 
    
     
-    for remainder in range(0,10):
-        table = pd.read_sql_query("""
+
+    check = pd.read_sql_query("""
             with base as (
-                select distinct
-                    a.tweet_tweet_id, tweet_text, null as name
-                from
-                    df_merge a, tracker_tracker b
-                where
-                    a.query_name = b.query_name 
-                  
-                    and tweet_text not like 'RT @%'
-                    and b.id in ({0})
-
+                select distinct tweet_tweet_id from df_merge 
+                where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
+                and tweet_text not like 'RT%'
                 union 
+                select distinct tweet_id from df_tweets_referenced_meta  
+                where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
+            )
+            select distinct a.tweet_tweet_id
+            from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id
+            where b.tweet_tweet_id is null
+        """.format(tracker), engine)
+    id_string = ''
+    id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
+    if id_string == '':
+        print('Skipping, no new tweets detected...')
+    else:
+        print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
+        for remainder in range(0,10):
+            table = pd.read_sql_query("""
+                with base as (
+                    select distinct
+                        a.tweet_tweet_id, tweet_text, null as name
+                    from
+                        df_merge a, tracker_tracker b
+                    where
+                        a.query_name = b.query_name 
+                    
+                        and tweet_text not like 'RT @%'
+                        and b.id in ({0})
 
-                select distinct 
-                    tweet_id, text, null as name
-                from 
-                    df_tweets_referenced_meta a, tracker_tracker b
-                where 
-                    a.query_name = b.query_name 
-           
-                    and b.id in ({0})
-                )
-                select * from base where mod(tweet_tweet_id::bigint,10) = {1}
-        """.format(tracker, remainder), engine)
+                    union 
 
-        if table.shape[0] > 0:
-            punc = False
-            args = ''
-            if 'remove_punc' in preproc:
-                args = args + 'p.OPT.EMOJI, p.OPT.SMILEY' + ','
-                punc = True
-            if 'remove_urls' in preproc:
-                args = args + 'p.OPT.URL' + ','
-            if 'remove_hashtags' in preproc:
-                args = args + 'p.OPT.HASHTAG' + ','
-            if 'remove_mentions' in preproc:
-                args = args + 'p.OPT.MENTION' + ','
-            if 'remove_reserved' in preproc:
-                args = args + 'p.OPT.RESERVED' + ','
-            if 'remove_numbers' in preproc:
-                args = args + 'p.OPT.NUMBER' + ','
-            args  = 'p.set_options(' + args[0:-1] +')'
+                    select distinct 
+                        tweet_id, text, null as name
+                    from 
+                        df_tweets_referenced_meta a, tracker_tracker b
+                    where 
+                        a.query_name = b.query_name 
             
-            eval(args)
-            print('PUNC: ', punc)
-            def process_tw(text):
-                cleaned = p.clean(text).lower()
-                if punc:
-                    cleaned = cleaned.translate(str.maketrans('', '', string.punctuation))
-                splitted = cleaned.split()
-                resultwords  = [word for word in splitted if word.lower() not in stopwords]
-                result = ' '.join(resultwords)
-                result = ' ' + result + ' '
+                        and b.id in ({0})
+                    )
+                    select * from base where mod(tweet_tweet_id::bigint,10) = {1} and tweet_tweet_id in ({2})
+            """.format(tracker, remainder, id_string), engine)
+
+            if table.shape[0] > 0:
+                punc = False
+                args = ''
+                if 'remove_punc' in preproc:
+                    args = args + 'p.OPT.EMOJI, p.OPT.SMILEY' + ','
+                    punc = True
+                if 'remove_urls' in preproc:
+                    args = args + 'p.OPT.URL' + ','
+                if 'remove_hashtags' in preproc:
+                    args = args + 'p.OPT.HASHTAG' + ','
+                if 'remove_mentions' in preproc:
+                    args = args + 'p.OPT.MENTION' + ','
+                if 'remove_reserved' in preproc:
+                    args = args + 'p.OPT.RESERVED' + ','
+                if 'remove_numbers' in preproc:
+                    args = args + 'p.OPT.NUMBER' + ','
+                args  = 'p.set_options(' + args[0:-1] +')'
                 
-                for arr in corrections:
-                    #print('1: ',result)
-                    result = result.replace(' '+arr[0]+' ', ' '+arr[1]+' ')
-                    #print('2: ', result)
-                cleaned = result
-        
-                return cleaned, proc_name
-
-            print('corr: ', corrections)
-            table["tweet_text"], table['processor_name'] = zip(*table.tweet_text.map(process_tw))
+                eval(args)
+                print('PUNC: ', punc)
+                def process_tw(text):
+                    cleaned = p.clean(text).lower()
+                    if punc:
+                        cleaned = cleaned.translate(str.maketrans('', '', string.punctuation))
+                    splitted = cleaned.split()
+                    resultwords  = [word for word in splitted if word.lower() not in stopwords]
+                    result = ' '.join(resultwords)
+                    result = ' ' + result + ' '
+                    
+                    for arr in corrections:
+                        #print('1: ',result)
+                        result = result.replace(' '+arr[0]+' ', ' '+arr[1]+' ')
+                        #print('2: ', result)
+                    cleaned = result
             
-        
+                    return cleaned, proc_name
 
-            print('OK: ', remainder)
-            table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
-        
-        else:
-            print('pass', remainder)
-            pass
+                print('corr: ', corrections)
+                table["tweet_text"], table['processor_name'] = zip(*table.tweet_text.map(process_tw))
+                
+            
+
+                print('OK: ', remainder)
+                table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
+            
+            else:
+                print('pass', remainder)
+                pass
 
     
 
