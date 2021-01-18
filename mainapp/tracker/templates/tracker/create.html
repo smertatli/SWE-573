@@ -2,6 +2,15 @@
 
 
 
+<script>
+  $draggable( function() {
+    
+  $draggable( "#sortable" ).sortable();
+  $draggable( "#sortable" ).disableSelection();
+  
+} );
+</script>
+
 <script
   type="text/javascript"
   src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"
@@ -29,10 +38,12 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
+<div id="sortable">
+
 <div class="col-md-12" >
   <div class="card mb-4" id = 'deneme_renk'>
       <div class="card-body" >
-       <div class="card-title mb-3"><h1><b>Create Track</b></h1></div>
+       <div class="card-title mb-3"><h1><b>&#128269; Create Track</b></h1></div>
       <!--  SmartWizard html -->
       <div id="smartwizard" class="sw-main sw-theme-default" >
         
@@ -173,28 +184,37 @@
 
 
 
-
-
 <div class="col-md-12" >
   <div class="card mb-4" id = 'deneme_renk'>
       <div class="card-body" >
           <div class="card-title mb-3"><h1><b>All Processors</b></h1></div>
-          <table id="tracker_table" class="display" cellspacing="0" width="100%" >
+          <table id="tracker_table" class="display" cellspacing="0" width='100%' >
               <thead>
                   <tr>
                       <th></th>
-                      <th>Username</th>
-                      <th>Query Name</th>
-                      <th>Status</th>
-                  
+                      <th>username</th>
+                      <th>query_name</th>
+                      <th>query</th>
+                      <th>frequency_level1</th>
+                      <th>frequency_level2</th>
+                      <th>fetch_size</th>
+                      <th>status</th>
+                      <th>date_start</th>
+                      <th>date_end Name</th>                
                   </tr>
               </thead>
               <tfoot>
                   <tr>
                       <th></th>
-                      <th>Username</th>
-                      <th>Query Name</th>
-                      <th>Status</th>
+                      <th>username</th>
+                      <th>query_name</th>
+                      <th>query</th>
+                      <th>frequency_level1</th>
+                      <th>frequency_level2</th>
+                      <th>fetch_size</th>
+                      <th>status</th>
+                      <th>date_start</th>
+                      <th>date_end Name</th>                
                   </tr>
               </tfoot>
               </table>
@@ -206,17 +226,196 @@
               <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Analyze Selected Processor</button>
          </div>
           <div class="col-md-6">
-              <form action="{% url 'analyzer:tweet_preprocessor_delete' %}" method="POST">
+            
+              <form action="{% url 'tracker:create_track' %}" method="POST">
                   {% csrf_token %}
-                  <input type="hidden"  id='dummy' name='dummy'></input>
-                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="delete_processors();">Delete Selected Processors</button>
-                  <div>{{ result }}</div>
+                   <input type="hidden"  id='dummy' name='dummy'></input>
+                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_processors();">Cancel Selected Processor(s)</button>
+                  
               </form>
+             
           </div>
           
       </div>
   </div>
+  {{ status|safe}}
 </div>
+
+
+<div class="col-md-12" id ='analysis_chart'>
+  <div class="card mb-4" id = 'deneme_renk'>
+    <div class="card-body" >
+      <h1><b>Count Chart</b></h1>
+      <div id="chartdiv_count"></div>
+      <h1><b>Date Chart</b></h1>(last 365 days)
+      <div id="chartdiv_date"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Styles -->
+<style>
+  #chartdiv_date {
+    width: 100%;
+    height: 500px;
+  }
+
+  #chartdiv_count {
+    width: 100%;
+    height: 500px;
+  }
+  
+  </style>
+  
+  <!-- Resources -->
+  <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+  <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+  <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+  
+  <!-- Chart code -->
+  <script>
+
+      // Themes begin
+  am4core.useTheme(am4themes_animated);
+  // Themes end
+  
+  // Create chart instance
+
+  analysis_chart = document.getElementById('analysis_chart')
+  analysis_chart.style.display = 'none'
+
+  function draw_it() {
+  
+  // Themes begin
+  am4core.useTheme(am4themes_animated);
+  // Themes end
+  
+  _data =  $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "tracker:visualize_accumulations" %}',
+                    dataType: 'json',
+                    data:{'dummy': document.getElementById('dummy').value}
+                }).responseJSON;
+
+  analysis_chart = document.getElementById('analysis_chart')
+  analysis_chart.style.display = 'block'
+  
+
+  draw_count()
+  draw_date()
+      
+  
+  }; // end am4core.ready()
+
+
+  function draw_count()
+  {
+    
+        // Create chart instance
+      var chart = am4core.create("chartdiv_count", am4charts.XYChart);
+      chart.scrollbarX = new am4core.Scrollbar();
+      // Add data
+      
+      chart.data =_data['counts']
+      
+      
+      var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+      categoryAxis.dataFields.category = "query_name";
+      categoryAxis.renderer.grid.template.location = 0;
+      categoryAxis.renderer.minGridDistance = 30;
+      categoryAxis.renderer.labels.template.horizontalCenter = "right";
+      categoryAxis.renderer.labels.template.verticalCenter = "middle";
+      categoryAxis.renderer.labels.template.rotation = 270;
+      categoryAxis.tooltip.disabled = true;
+      categoryAxis.renderer.minHeight = 5;
+
+      var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis.renderer.minWidth = 5;
+
+      // Create series
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.sequencedInterpolation = true;
+      series.dataFields.valueY = "total";
+      series.dataFields.categoryX = "query_name";
+      series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+      series.columns.template.strokeWidth = 0;
+
+      series.tooltip.pointerOrientation = "vertical";
+
+      series.columns.template.column.cornerRadiusTopLeft = 10;
+      series.columns.template.column.cornerRadiusTopRight = 10;
+      series.columns.template.column.fillOpacity = 0.8;
+        
+        // on hover, make corner radiuses bigger
+        var hoverState = series.columns.template.column.states.create("hover");
+        hoverState.properties.cornerRadiusTopLeft = 0;
+        hoverState.properties.cornerRadiusTopRight = 0;
+        hoverState.properties.fillOpacity = 1;
+
+        series.columns.template.adapter.add("fill", function(fill, target) {
+          return chart.colors.getIndex(target.dataItem.index);
+        });
+
+        // Cursor
+        chart.cursor = new am4charts.XYCursor();
+  }
+
+  function draw_date()
+  {
+        // Create chart instance
+      var chart = am4core.create("chartdiv_date", am4charts.XYChart);
+      chart.scrollbarX = new am4core.Scrollbar();
+      // Add data
+      
+      chart.data =_data['dates']
+      
+      
+      var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+      categoryAxis.dataFields.category = "query_name";
+      categoryAxis.renderer.grid.template.location = 0;
+      categoryAxis.renderer.minGridDistance = 30;
+      categoryAxis.renderer.labels.template.horizontalCenter = "right";
+      categoryAxis.renderer.labels.template.verticalCenter = "middle";
+      categoryAxis.renderer.labels.template.rotation = 270;
+      categoryAxis.tooltip.disabled = true;
+      categoryAxis.renderer.minHeight = 5;
+
+      var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis.renderer.minWidth = 5;
+
+      // Create series
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.sequencedInterpolation = true;
+      series.dataFields.valueY = "total";
+      series.dataFields.categoryX = "query_name";
+      series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+      series.columns.template.strokeWidth = 0;
+
+      series.tooltip.pointerOrientation = "vertical";
+
+      series.columns.template.column.cornerRadiusTopLeft = 10;
+      series.columns.template.column.cornerRadiusTopRight = 10;
+      series.columns.template.column.fillOpacity = 0.8;
+        
+        // on hover, make corner radiuses bigger
+        var hoverState = series.columns.template.column.states.create("hover");
+        hoverState.properties.cornerRadiusTopLeft = 0;
+        hoverState.properties.cornerRadiusTopRight = 0;
+        hoverState.properties.fillOpacity = 1;
+
+        series.columns.template.adapter.add("fill", function(fill, target) {
+          return chart.colors.getIndex(target.dataItem.index);
+        });
+
+        // Cursor
+        chart.cursor = new am4charts.XYCursor();
+  }
+  </script>
+  
+  <!-- HTML -->
+ 
 
 
 <script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
@@ -224,6 +423,11 @@
 
 <script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
 <link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.colVis.min.js"></script>
+<link href="https://cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css" rel="stylesheet" />
+
 
 
 <link rel="stylesheet" href="/static/dist-assets/css/plugins/sweetalert2.min.css" />
@@ -347,20 +551,46 @@
                 
     var table_processor = $('#tracker_table').DataTable({
         data: tracks,
-        
+        dom: 'Bfrtip',
         'columnDefs': [
             {
                 'targets': 0,
                 'checkboxes': {
                     'selectRow': true
-                }
+                },
+                'className': 'noVis'
+            }
+        ],
+        'buttons': [
+            {
+                'extend': 'colvis',
+                'columns': ':not(.noVis)'
             }
         ],
         'select': {
             'style': 'multi'
         },
         'order': [[1, 'asc']]
+    })
+    
+
+
+
+   
+    $('#tracker_table tbody').on('change', 'input[type="checkbox"]', function() {
+      arr_selected_procs = []
+      
+      var rows_selected = table_processor.column(0).checkboxes.selected();
+      document.getElementById('dummy').value =''
+      $.each(rows_selected, function(index, rowId){arr_selected_procs.push(rowId);  document.getElementById('dummy').value = document.getElementById('dummy').value + ','+rowId});
+      document.getElementById('dummy').value = document.getElementById('dummy').value.slice(1,)
     });
+  
+    function analyze_processor(){
+      draw_it();
+      alert('OK')
+    }
+    
     
 </script>
 

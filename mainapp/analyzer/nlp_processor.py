@@ -1,4 +1,4 @@
-def Processor(user_name, proc_name, tracker, preproc, stopwords_file, corrections_file):
+def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corrections_file):
 
     from django.shortcuts import render
     from django.http import JsonResponse, HttpResponse
@@ -53,28 +53,38 @@ def Processor(user_name, proc_name, tracker, preproc, stopwords_file, correction
         corrections = []
         print('CANNOT OPEN CORRECTİONS', '/usr/src/mainapp/' + corrections_file + '.pckl')
 
-   
+    id_string = ''
+    noTable = False
+    check = ''
+    try:
+        check = pd.read_sql_query("""
+                with base as (
+                    select distinct tweet_tweet_id from df_merge 
+                    where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
+                    and tweet_text not like 'RT%'
+                    union 
+                    select distinct tweet_id from df_tweets_referenced_meta  
+                    where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
+                )
+                select distinct a.tweet_tweet_id
+                from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id
+                where b.tweet_tweet_id is null and processor_name in ('{1}')
+                limit 500
+            """.format(tracker, proc_name), engine)
+        id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
+    except:
+        noTable = True
     
 
-    check = pd.read_sql_query("""
-            with base as (
-                select distinct tweet_tweet_id from df_merge 
-                where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
-                and tweet_text not like 'RT%'
-                union 
-                select distinct tweet_id from df_tweets_referenced_meta  
-                where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
-            )
-            select distinct a.tweet_tweet_id
-            from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id
-            where b.tweet_tweet_id is null
-        """.format(tracker), engine)
-    id_string = ''
-    id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
-    if id_string == '':
+    if id_string == '' and not noTable:
         print('Skipping, no new tweets detected...')
     else:
-        print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
+        if noTable:
+            print('Creating processed_tweets table for the first time...')
+        
+        if check != '':
+            print('KONTROL ', check)
+            print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
         for remainder in range(0,10):
             table = pd.read_sql_query("""
                 with base as (
@@ -99,8 +109,8 @@ def Processor(user_name, proc_name, tracker, preproc, stopwords_file, correction
             
                         and b.id in ({0})
                     )
-                    select * from base where mod(tweet_tweet_id::bigint,10) = {1} and tweet_tweet_id in ({2})
-            """.format(tracker, remainder, id_string), engine)
+                    select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
+            """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check == '' else ' 1=2' ), engine)
 
             if table.shape[0] > 0:
                 punc = False
@@ -136,17 +146,38 @@ def Processor(user_name, proc_name, tracker, preproc, stopwords_file, correction
                         result = result.replace(' '+arr[0]+' ', ' '+arr[1]+' ')
                         #print('2: ', result)
                     cleaned = result
-            
-                    return cleaned, proc_name
+
+                    twt = TextBlob(cleaned)
+
+                    polarity = ''
+                    subjectivity = ''
+                    pos = ''
+                    noun_phrases = ''
+
+                    if 'polarity' in nlp:
+                        polarity = twt.sentiment.polarity
+                    
+                    if 'subjectivity' in nlp:
+                        subjectivity = twt.sentiment.subjectivity
+                    
+                    if 'pos_tagging' in nlp:
+                        pos = twt.tags
+
+                    if 'noun_phrases' in nlp:
+                        noun_phrases = twt.noun_phrases
+
+                    return cleaned, proc_name, subjectivity, polarity, pos, noun_phrases
 
                 print('corr: ', corrections)
-                table["tweet_text"], table['processor_name'] = zip(*table.tweet_text.map(process_tw))
+                table["tweet_text"], table['processor_name'], table['subjectivity'], table['polarity'], table['pos'], table['noun_phrases'] = zip(*table.tweet_text.map(process_tw))
                 
             
 
                 print('OK: ', remainder)
+
+                
                 table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
-            
+
             else:
                 print('pass', remainder)
                 pass

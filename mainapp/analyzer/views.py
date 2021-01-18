@@ -235,13 +235,15 @@ def call_ajax(request):
         name = request.POST.get('name')
         tracker = request.POST.get('tracker')
         preproc = request.POST.get('preproc')
+        nlp = request.POST.get('nlp')
         stopwords = request.POST.get('stopwords')
         corrections = request.POST.get('corrections')
         
         if not tracker:
             arr = 'null'
         
-        return create_preprocess_tweets_job(request.user, name, tracker, preproc, stopwords, corrections)
+        
+        return create_preprocess_tweets_job(request.user, name, tracker, preproc, nlp, stopwords, corrections)
 
     elif which == 'processor_name_checker':
         status = 1
@@ -496,8 +498,8 @@ def get_all_corrections_files():
         
 
 
-def create_preprocess_tweets_job(user, name, tracker, preproc, stopwords, corrections):
-    print(tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker,tracker)
+def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, corrections):
+    print(user, name, tracker, preproc, nlp, stopwords, corrections)
     sw = True
     cor = True
     
@@ -507,6 +509,7 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, stopwords, correc
                                 name=name,
                                 tracker=tracker,
                                 preproc=preproc,
+                                nlp=nlp,
                                 stopwords=stopwords,
                                 corrections=corrections)
 
@@ -515,6 +518,7 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, stopwords, correc
                     proc_name=name,
                     tracker=tracker,
                     preproc=preproc,
+                    nlp=nlp,
                     stopwords_file=stopwords,
                     corrections_file=corrections,
                     schedule_type='I',

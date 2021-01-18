@@ -25,7 +25,8 @@
                     <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>Preprocessing Options</small></a></li>
                     <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>Stopwords Options</small></a></li>
                     <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>Custom Word Corrections</small></a></li>
-                    <li class="nav-item"><a href="#step-5" class="nav-link">Step 5<br><small>Give a name to processor</small></a></li>
+                    <li class="nav-item"><a href="#step-5" class="nav-link">Step 5<br><small>Select NLP Tasks</small></a></li>
+                    <li class="nav-item"><a href="#step-6" class="nav-link">Step 6<br><small>Give a name to processor</small></a></li>
                 </ul>
                 <div>
                     <div id="step-1">
@@ -167,6 +168,36 @@
                     </div>
 
                     <div id="step-5"  >
+                        <h3 class="border-bottom border-gray pb-2"><b>NLP Tasks</b></h3>
+                        Select machine learning tasks to perform:
+                        <form>
+                            <div class="row">
+                                <div class="col-md-6 form-group mb-3">
+                                    <label class="checkbox checkbox-primary" >
+                                        <input type="checkbox"  name='nlp_tasks' class ='nlp_tasks' value='polarity'><span>Polarity Analysis</span><span class="checkmark"></span>
+                                    </label>
+                                </div>
+                                <div class="col-md-6 form-group mb-3">
+                                    <label class="checkbox checkbox-primary" >
+                                        <input type="checkbox"   name='nlp_tasks' class ='nlp_tasks' value='subjectivity'> <span>Subjectivity Analysis</span><span class="checkmark"></span>
+                                    </label>
+                                </div>
+                                <div class="col-md-6 form-group mb-3">
+                                    <label class="checkbox checkbox-primary" >
+                                        <input type="checkbox"   name='nlp_tasks' class ='nlp_tasks' value='pos_tagging'> <span>POS Tagging</span><span class="checkmark"></span>
+                                    </label>
+                                </div>
+                                <div class="col-md-6 form-group mb-3">
+                                    <label class="checkbox checkbox-primary" >
+                                        <input type="checkbox"  name='nlp_tasks' class ='nlp_tasks' value='noun_phrases'> <span>Extract Noun Phrases</span><span class="checkmark"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                       
+                    </div>
+
+                    <div id="step-6"  >
                         <h3 class="border-bottom border-gray pb-2"><b>Give a glorious name to the processor</b></h3>
                         Call my Glorious Processor: <input type="text" id = 'glorious_name'></input>
                        
@@ -466,7 +497,12 @@
             $('input.preproc:checkbox:checked').each(function () {
                 arr_preproc.push($(this).val());
             });
-        
+
+            var arr_nlp = []
+            $('input.nlp_tasks:checkbox:checked').each(function () {
+                arr_nlp.push($(this).val());
+            });
+            
 
         
 
@@ -483,6 +519,7 @@
                     'name': glorious_name,
                     'tracker': arr.toString(),
                     'preproc': arr_preproc.toString(),
+                    'nlp': arr_nlp.toString(),
                     'stopwords': stopwords,
                     'corrections': corrections
                 }

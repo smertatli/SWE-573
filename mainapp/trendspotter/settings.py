@@ -131,7 +131,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 #STATIC_URL = "/staticfiles/"
 #STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-LOGIN_URL = ''
+LOGIN_URL = '/login'
 
 Q_CLUSTER = {
     'name': 'DjangORM',
