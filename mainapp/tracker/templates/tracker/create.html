@@ -263,7 +263,7 @@
 
   #chartdiv_count {
     width: 100%;
-    height: 500px;
+    height: 600px;
   }
   
   </style>
@@ -334,13 +334,59 @@
       var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
       valueAxis.renderer.minWidth = 5;
 
+      var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis2.title.text = "Type %";
+      valueAxis2.renderer.opposite = true;
+      valueAxis2.renderer.grid.template.disabled = true;
+
       // Create series
       var series = chart.series.push(new am4charts.ColumnSeries());
       series.sequencedInterpolation = true;
       series.dataFields.valueY = "total";
+      series.yAxis = valueAxis;
       series.dataFields.categoryX = "query_name";
       series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
       series.columns.template.strokeWidth = 0;
+
+      var series2 = chart.series.push(new am4charts.LineSeries());
+      series2.dataFields.valueY = "replied_to_perc";
+      series2.dataFields.categoryX = "query_name";
+      series2.name = "replied_to";
+      series2.strokeWidth = 2;
+      series2.tensionX = 0.7;
+      series2.yAxis = valueAxis2;
+      series2.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series3 = chart.series.push(new am4charts.LineSeries());
+      series3.dataFields.valueY = "quoted_perc";
+      series3.dataFields.categoryX = "query_name";
+      series3.name = "quoted";
+      series3.strokeWidth = 2;
+      series3.tensionX = 0.7;
+      series3.yAxis = valueAxis2;
+      series3.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series4 = chart.series.push(new am4charts.LineSeries());
+      series4.dataFields.valueY = "retweeted_perc";
+      series4.dataFields.categoryX = "query_name";
+      series4.name = "retweeted";
+      series4.strokeWidth = 2;
+      series4.tensionX = 0.7;
+      series4.yAxis = valueAxis2;
+      series4.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series5 = chart.series.push(new am4charts.LineSeries());
+      series5.dataFields.valueY = "regular_perc";
+      series5.dataFields.categoryX = "query_name";
+      series5.name = "regular";
+      series5.strokeWidth = 2;
+      series5.tensionX = 0.7;
+      series5.yAxis = valueAxis2;
+      series5.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+
+
+      
 
       series.tooltip.pointerOrientation = "vertical";
 
@@ -553,13 +599,26 @@
         data: tracks,
         dom: 'Bfrtip',
         'columnDefs': [
-            {
+          {
                 'targets': 0,
                 'checkboxes': {
                     'selectRow': true
                 },
                 'className': 'noVis'
             }
+            
+        ],
+        'columns': [
+            {"visible": true},
+            {"visible": false},
+            {"visible": false},
+            {"visible": false},
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
         ],
         'buttons': [
             {
@@ -588,7 +647,7 @@
   
     function analyze_processor(){
       draw_it();
-      alert('OK')
+      
     }
     
     

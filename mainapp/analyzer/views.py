@@ -16,6 +16,7 @@ import uuid
 import nltk
 from nltk.corpus import stopwords
 nltk.download('stopwords')
+import networkx as nx
 
 db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
 settings.DATABASES['default']['USER'],
@@ -238,11 +239,8 @@ def call_ajax(request):
         nlp = request.POST.get('nlp')
         stopwords = request.POST.get('stopwords')
         corrections = request.POST.get('corrections')
-        
         if not tracker:
             arr = 'null'
-        
-        
         return create_preprocess_tweets_job(request.user, name, tracker, preproc, nlp, stopwords, corrections)
 
     elif which == 'processor_name_checker':
@@ -311,12 +309,14 @@ def call_ajax(request):
     elif which == 'get_processors':
         print('GET PROCESSORS: ', request.user, request.user.id)
         
-        table = pd.read_sql_query("""select id, name, tracker, stopwords, corrections, preproc from analyzer_processor_nlp where user_id ='{0}' """.format(request.user.id), engine)
+        table = pd.read_sql_query("""
+            select a.id, a.name, a.tracker, a.stopwords, a.corrections, a.preproc, a.nlp, case when b.id is not null then 'Active' else 'Inactive' end status
+            from analyzer_processor_nlp a left join django_q_schedule b on position(a.name in b.kwargs) > 0 and coalesce(repeats,0) <> 0
+            where a.user_id ='{0}' 
+            """.format(request.user.id), engine)
         procs = []
         for index, row in table.iterrows():
-            procs.append([row['id'], row['name'],  row['tracker'], row['stopwords'], row['corrections'], row['preproc']])
-            print('YES')
-        print(procs)
+            procs.append([row['id'], row['name'],  row['tracker'], row['stopwords'], row['corrections'], row['preproc'], row['nlp'], row['status']])
         return JsonResponse(procs, safe=False) 
 
 
@@ -429,6 +429,307 @@ def call_ajax(request):
         print(temp.to_dict(orient='records'))
         return JsonResponse(temp.to_dict(orient='records'), safe=False)
 
+    elif which == 'get_network_data':
+
+        track = request.POST.get('track')
+        domain = request.POST.get('domain')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        node_level = request.POST.get('node_level')
+        print('OKOOOOOOOO:', track)
+        if not domain:
+            domain =''
+        temp = ''
+        if node_level == 'domain':
+            
+            temp = pd.read_sql_query("""
+                with base as (
+                    select distinct tweet_id
+                    from df_annotations a, tracker_tracker b
+                    where a.query_name = b.query_name and (a.domain_id::int in ({3} and b.id in ({0}) and date(a.key) between '{1}' and '{2}'
+                ),
+                base2 as (
+                    select distinct a.tweet_id, a.domain_id
+                    from df_annotations a, base b
+                    where a.tweet_id = b.tweet_id and (a.domain_id::int not in ({3} 
+                ),
+                domains as (select domain_id, max(lower(domain_name)) as domain_name from df_annotation_domain group by domain_id)
+                select c.domain_name as from_name, c.domain_id as from, d.domain_name as to_name, d.domain_id as to, count(*) as value
+                from base2 a, base2 b, domains c, domains d
+                where a.tweet_id = b.tweet_id and c.domain_name < d.domain_name and a.domain_id = c.domain_id and b.domain_id = d.domain_id
+                group by c.domain_name, d.domain_name, c.domain_id, d.domain_id
+                order by count(*) desc
+                limit 2000
+            """.format(track, start_date, end_date, (domain+'))') if domain > '' else "1) or 1=1)"), engine)
+            tmp1 = temp[['from', 'from_name']]
+            tmp2 = temp[['to', 'to_name']]
+            import random
+            tmp1['value'] = 1
+            tmp2['value'] = 1
+            tmp1.columns =['id', 'label', 'value']
+            tmp2.columns =['id', 'label', 'value']
+            distinct = pd.concat([tmp1, tmp2], axis=0)
+            
+            distinct.drop_duplicates(inplace=True)
+            distinct['value'] = [int(random.random()*100) for i in range(0, distinct.shape[0])]
+            print(distinct, temp)
+            
+            G_symmetric = nx.Graph() 
+            for index, row in temp.iterrows():
+                G_symmetric.add_edge(row['from_name'], row['to_name'])
+            print('NETWORK: ', nx.info(G_symmetric))
+            degree_centrality = nx.degree_centrality(G_symmetric)
+            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            
+            print('HMHMHMHM                            :', xx.keys())
+            aa = []
+            bb = []
+            for i, v in enumerate(xx.keys()):
+                aa.append([v,xx[v]])
+    
+            for i, v in enumerate(yy.keys()):
+                bb.append([v,yy[v]])
+            
+            degree_df = pd.DataFrame(aa, columns=['label','value'])
+            bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+            print('NETWORK: ', nx.info(G_symmetric), degree_centrality)
+            print('NETWORK 2: ', betweenness_centrality)
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
+                                 'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+                                 'degree_df': degree_df.to_json(orient='records'),
+                                 'bet_df': bet_df.to_json(orient='records')})
+
+
+        elif node_level == 'entity':
+            
+            temp = pd.read_sql_query("""
+                with base as (
+                    select tweet_id, entity_id, max(domain_id) as domain_id
+                    from df_annotations a, tracker_tracker b
+                    where a.query_name = b.query_name and (a.domain_id::int in ({3} and b.id in ({0}) and date(a.key) between '{1}' and '{2}'
+                    group by tweet_id, entity_id
+                ),
+                entities as (select entity_id, max(lower(entity_name)) as entity_name from df_annotation_entity group by entity_id),
+                domains as (select domain_id, max(lower(domain_name)) as domain_name from df_annotation_domain group by domain_id)
+                select 
+                    ent1.entity_name as from_name, ent1.entity_id as from, ent2.entity_name as to_name, ent2.entity_id as to, 
+                    c.domain_name as from_domain, d.domain_name as from_domain, count(*) as value
+                from 
+                    base a, base b, domains c, domains d, entities ent1, entities ent2
+                where 
+                    a.tweet_id = b.tweet_id and ent1.entity_name < ent2.entity_name and 
+                    a.domain_id = c.domain_id and b.domain_id = d.domain_id and
+                    a.entity_id = ent1.entity_id and b.entity_id = ent2.entity_id
+
+                group by 
+                    ent1.entity_name, ent2.entity_name, ent1.entity_id, ent2.entity_id, c.domain_name, d.domain_name
+                order by 
+                    count(*) desc
+                limit 500
+            """.format(track, start_date, end_date, (domain+'))') if domain > '' else "1) or 1=1)"), engine)
+            tmp1 = temp[['from', 'from_name']]
+            tmp2 = temp[['to', 'to_name']]
+            import random
+            tmp1['value'] = 1
+            tmp2['value'] = 1
+            tmp1.columns =['id', 'label', 'value']
+            tmp2.columns =['id', 'label', 'value']
+            distinct = pd.concat([tmp1, tmp2], axis=0)
+            
+            distinct.drop_duplicates(inplace=True)
+            distinct['value'] = [int(random.random()*100) for i in range(0, distinct.shape[0])]
+            print(distinct, temp)
+
+            G_symmetric = nx.Graph() 
+            for index, row in temp.iterrows():
+                G_symmetric.add_edge(row['from_name'], row['to_name'])
+            print('NETWORK: ', nx.info(G_symmetric))
+            degree_centrality = nx.degree_centrality(G_symmetric)
+            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            
+            print('HMHMHMHM                            :', xx.keys())
+            aa = []
+            bb = []
+            for i, v in enumerate(xx.keys()):
+                aa.append([v,xx[v]])
+    
+            for i, v in enumerate(yy.keys()):
+                bb.append([v,yy[v]])
+            
+            degree_df = pd.DataFrame(aa, columns=['label','value'])
+            bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+            print('+++++++++++++++++++++++++++++++++++++++', degree_df.to_json(orient='records'))
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                 'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
+                                 'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+                                 'degree_df': degree_df.to_json(orient='records'),
+                                 'bet_df': bet_df.to_json(orient='records')})
+        elif node_level == 'hashtag':
+            if domain == '':
+                temp = pd.read_sql_query("""
+                            with base as (
+                                select distinct tweet_id, lower(tag) as tag 
+                                from df_entities a, tracker_tracker b, df_merge c
+                                where 
+                                    a.tweet_id = c.tweet_tweet_id 
+                                    and a.key=c.key 
+                                    and a.query_name = b.query_name 
+                                    and a.query_name = c.query_name
+                                    and a.category='hashtags' 
+                                    and b.id in ({0})
+                                    and date(c.tweet_created_at) between '{1}' and '{2}'
+                            ),
+                            base2 as (
+                                select tag, count(*) as tot from base where tag != 'bekarlıksultanlıkmı' group by tag
+                            ),
+                            base3 as (
+                                select tag, row_number() over (order by tot desc) as id from base2
+                            ),
+                            base4 as (
+                                select a.tag as from_label, c.id as from, b.tag as to_label, d.id as to, count(*) as value
+                                from base a, base b, base3 c, base3 d
+                                where 
+                                    a.tweet_id = b.tweet_id 
+                                    and a.tag < b.tag and
+                                    a.tag = c.tag and
+                                    b.tag = d.tag
+                                group by a.tag, b.tag, c.id, d.id
+                                order by count(*) desc
+                            )
+                            select *
+                            from base4
+                            limit 500
+                        """.format(track, start_date, end_date),engine)
+    
+                tmp1 = temp[['from', 'from_label']]
+                tmp2 = temp[['to', 'to_label']]
+                tmp1['value'] = 1
+                tmp2['value'] = 1
+                tmp1.columns =['id', 'label', 'value']
+                tmp2.columns =['id', 'label', 'value']
+                distinct = pd.concat([tmp1, tmp2], axis=0)
+                
+                distinct.drop_duplicates(inplace=True)
+                distinct['value'] = 1
+                print(distinct, temp)
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records')})
+            else:
+                temp = pd.read_sql_query("""
+                            with base as (
+                                select distinct tweet_id, lower(tag) as tag 
+                                from df_entities a, tracker_tracker b, df_merge c
+                                where 
+                                    a.tweet_id = c.tweet_tweet_id 
+                                    and a.key=c.key 
+                                    and a.query_name = b.query_name 
+                                    and a.query_name = c.query_name
+                                    and a.category='hashtags' 
+                                    and b.id in ({0})
+                                    and date(c.tweet_created_at) between '{1}' and '{2}'
+                            ),
+                            base2 as (
+                                select tag, count(*) as tot from base where tag != 'bekarlıksultanlıkmı' group by tag
+                            ),
+                            domains as (
+                                select distinct tweet_id 
+                                from df_annotations a, tracker_tracker b 
+                                where a.query_name = b.query_name and domain_id::int in ({3}) and b.id in ({0})
+                            ),
+                            base3 as (
+                                select tag, row_number() over (order by tot desc) as id from base2
+                            ),
+                            base4 as (
+                                select a.tag as from_label, c.id as from, b.tag as to_label, d.id as to, count(*) as value
+                                from base a, base b, base3 c, base3 d, domains e
+                                where 
+                                    a.tweet_id = b.tweet_id 
+                                    and a.tweet_id = e.tweet_id
+                                    and a.tag < b.tag and
+                                    a.tag = c.tag and
+                                    b.tag = d.tag
+                                group by a.tag, b.tag, c.id, d.id
+                                order by count(*) desc
+                            )
+                            select *
+                            from base4
+                            limit 300
+                        """.format(track, start_date, end_date, domain),engine)
+    
+                tmp1 = temp[['from', 'from_label']]
+                tmp2 = temp[['to', 'to_label']]
+                tmp1['value'] = 1
+                tmp2['value'] = 1
+                tmp1.columns =['id', 'label', 'value']
+                tmp2.columns =['id', 'label', 'value']
+                distinct = pd.concat([tmp1, tmp2], axis=0)
+                
+                distinct.drop_duplicates(inplace=True)
+                distinct['value'] = 1
+                print(distinct, temp)
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records')})
+        
+        print('RESULT: ',temp)
+        return JsonResponse('ok', safe=False)
+    elif which == 'domain_top_entities_graph':
+        temp = pd.read_sql_query("""
+                with base as (
+                    select b.domain_name, c.entity_name, count(*) total, count(*) over (partition by domain_name) as domain_tot
+                from 
+                    df_annotations a, 
+                    tracker_tracker t,
+                    (select distinct lower(domain_name) as domain_name, domain_id, domain_desc from df_annotation_domain where domain_id::int in ({0})) b, 
+                    (select distinct lower(entity_name) as entity_name, entity_id, entity_desc from df_annotation_entity) c
+                where a.domain_id = b.domain_id and a.entity_id = c.entity_id and 
+                    a.query_name = t.query_name and t.id in ({1})
+                group by b.domain_name, c.entity_name 
+                )
+                select 
+                    *, 
+                    row_number() over (partition by domain_name order by total desc) as rc,
+                    DENSE_RANK() over (order by domain_tot desc) as rc_domain
+                from base
+            """.format(request.POST.get('domain'), request.POST.get('track')), engine)
+        arr = []
+        temp = temp[(temp['rc_domain'] <= 10) & (temp['rc'] <= 20)]
+        for domain in set(temp['domain_name']):
+            the_dict = {}
+            the_dict['name'] =domain
+            the_dict['children'] = []
+            entities = temp[temp['domain_name'] == domain]
+            for index, row in entities.iterrows():
+                the_dict['children'].append({ 'name': row['entity_name'], 'value': row['total'] })
+            arr.append(the_dict)
+        return JsonResponse(arr, safe=False)
+    elif which == 'get_comparisons':
+        source1 = request.POST.get('source1')
+        source2 = request.POST.get('source2')
+        start_date1 = request.POST.get('start_date1')
+        start_date2 = request.POST.get('start_date2')
+        end_date1 = request.POST.get('end_date1')
+        end_date2 = request.POST.get('end_date2')
+    elif which == 'cancel_processor':
+        ids = request.POST.get('selected')
+        try:
+            conn = engine.connect()
+            print('DELETING ', ids)
+            conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(ids))
+            return JsonResponse({'result':'OK'})
+        except Exception as e:
+            
+            return JsonResponse({'result':'NOK'})
+        
+
+
+
 def save_stopword(user, name, sw):
     stopwords_file = '/usr/src/mainapp/' + name + '.pckl'
     try:
@@ -499,49 +800,56 @@ def get_all_corrections_files():
 
 
 def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, corrections):
+    """
+    This function takes the corresponding argument and:
+        - creates an NLP instance and record it
+        - creates a processor for repetative processing of tweets
+    """
     print(user, name, tracker, preproc, nlp, stopwords, corrections)
     sw = True
     cor = True
     
     preproc = preproc.split(',')
+    nlp = nlp.split(',')
 
-    Processor_NLP.objects.create(user=user,
-                                name=name,
-                                tracker=tracker,
-                                preproc=preproc,
-                                nlp=nlp,
-                                stopwords=stopwords,
-                                corrections=corrections)
+    #Save to db
+    errors = {}
 
-    schedule('analyzer.nlp_processor.Processor',
-                    user_name=str(user),
-                    proc_name=name,
-                    tracker=tracker,
-                    preproc=preproc,
-                    nlp=nlp,
-                    stopwords_file=stopwords,
-                    corrections_file=corrections,
-                    schedule_type='I',
-                    minutes = 1,
-                    repeats = 100000000
-                    )
+    try:
+        Processor_NLP.objects.create(user=user,
+                                    name=name,
+                                    tracker=tracker,
+                                    preproc=preproc,
+                                    nlp=nlp,
+                                    stopwords=stopwords,
+                                    corrections=corrections)
+    except Exception as e:
+        errors['Processor_NLP.objects.create'] = str(e)
     
-    return JsonResponse({'status': str(user)})
+    #Schedule the processor task
+    try:
+        schedule('analyzer.nlp_processor.Processor',
+                        user_name=str(user),
+                        proc_name=name,
+                        tracker=tracker,
+                        preproc=preproc,
+                        nlp=nlp,
+                        stopwords_file=stopwords,
+                        corrections_file=corrections,
+                        schedule_type='I',
+                        minutes = 1,
+                        repeats = 100000000
+                        )
+    except Exception as e:
+        errors["schedule('analyzer.nlp_processor.Processor"] = str(e)
+        
+    return JsonResponse({'status': str(errors)})
        
 
-def tweet_preprocessor_delete(request):
-    if(request.method == "POST"):
-        ids = request.POST.get('dummy')
-        try:
-            conn = engine.connect()
-            print('DELETING ', ids)
-            conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(ids))
-            return render(request, 'analyzer/tweet_preprocessor.html', {'result':'OK'})
-        except Exception as e:
-            
-            return render(request, 'analyzer/tweet_preprocessor.html', {'result':str(e)})
-   
 def tweet_media_analyzer(request):
     return render(request, 'analyzer/tweet_media_analyzer.html')
 
 
+
+def comparisor(request):
+    return render(request, 'analyzer/comparisor.html')

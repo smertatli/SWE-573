@@ -28,7 +28,7 @@
                 <div>
                     <div id="step-1">
                         <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
-                            <table id="example4" class="display" cellspacing="0" width="100%" >
+                            <table id="time_1" class="display" cellspacing="0" width="100%" >
                                 <thead>
                                    <tr>
                                       <th></th>
@@ -54,53 +54,40 @@
                     <div id="step-2" >
                         <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
                          <button   onclick='step_first();'>Get collected dates</button>
-                         <select name="date_start" id="selectStartDate"></select>
-                         <select name="date_end" id="selectEndDate"></select>
+                         <select name="date_start" id="selectStartDate1"></select>
+                         <select name="date_end" id="selectEndDate1"></select>
                     </div>
                     <div id="step-3"  >
                         <h3 class="border-bottom border-gray pb-2">Step 3 Content</h3>
                         
-                        <table id="domain_table" class="display" cellspacing="0" width="100%">
+                        <table id="time_2" class="display" cellspacing="0" width="100%" >
                             <thead>
                                <tr>
                                   <th></th>
-                                  <th>Domain</th>
-                                  <th>Desc</th>
+                                  <th>query_name</th>
+                                  <th>query</th>
+                                  <th>frequency_level1</th>
+                                  <th>frequency_level2</th>
+                                  <th>fetch_size</th>
                                </tr>
                             </thead>
                             <tfoot>
                                <tr>
                                   <th></th>
-                                  <th>Domain</th>
-                                  <th>Desc</th>
+                                  <th>query_name</th>
+                                  <th>query</th>
+                                  <th>frequency_level1</th>
+                                  <th>frequency_level2</th>
+                                  <th>fetch_size</th>
                                </tr>
                             </tfoot>
                          </table>
                     </div>
                     <div id="step-4"  >
-                        <h3 class="border-bottom border-gray pb-2">Step 4 Content</h3>
-                        
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="domain"><span>Domain</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="entity"><span>Entity</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="hashtag"><span>Hashtag</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="word"><span>Words</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="noun"><span>Nouns</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="bigram"><span>Bigrams</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="noun_phrase"><span>Noun Phrases</span><span class="checkmark"></span>
-                        </label>
+                        <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
+                        <button   onclick='step_second();'>Get collected dates</button>
+                        <select name="date_start2" id="selectStartDate2"></select>
+                        <select name="date_end2" id="selectEndDate2"></select>
                        
                     </div>
                 </div>
@@ -109,7 +96,7 @@
 
 
 
-<button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="deneme2();">Analyze</button>
+<button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="compare();">Analyze</button>
 
 
 <script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
@@ -143,11 +130,6 @@
     background-color: rgb(228, 228, 228);
   }
 
-  #chartdiv_count {
-    width: 100%;
-    height: 600px;
-  }
-
 </style>
 <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
@@ -172,18 +154,8 @@
             
         }).responseJSON;
 
-        var domains = $.ajax({
-            type: 'POST',
-            async: false,
-            url: '{% url "analyzer:call_ajax" %}',
-            dataType: 'json',
-            data: {'which':'get_domains'}
-            
-        }).responseJSON;
-
-
         
-        var table_track = $('#example4').DataTable({
+        var table_track1 = $('#time_1').DataTable({
             data: tracks,
 
             'columnDefs': [
@@ -200,8 +172,8 @@
             'order': [[1, 'asc']]
         });
 
-        var table_domain = $('#domain_table').DataTable({
-            data: domains,
+        var table_track2 = $('#time_2').DataTable({
+            data: tracks,
 
             'columnDefs': [
                 {
@@ -218,10 +190,9 @@
         });
 
         
-        
 
         function step_first(){
-            var rows_selected = table_track.column(0).checkboxes.selected();
+            var rows_selected = table_track1.column(0).checkboxes.selected();
             
             // Iterate over all selected checkboxes
             if(rows_selected.length > 0){
@@ -239,8 +210,58 @@
                 }).responseJSON;
                  
 
-                var start_date = document.getElementById("selectStartDate"); 
-                var end_date = document.getElementById("selectEndDate"); 
+                var start_date = document.getElementById("selectStartDate1"); 
+                var end_date = document.getElementById("selectEndDate1"); 
+
+                for (i = start_date.length-1; i >= 0; i--) {
+                    start_date.options[i] = null;
+                    end_date.options[i] = null;
+                    }
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    start_date.appendChild(el);
+        
+                });
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    end_date.appendChild(el);
+        
+                });
+            } else {
+                alert('Please select a data source first!');
+            }
+            
+        }
+
+
+
+        function step_second(){
+            var rows_selected = table_track2.column(0).checkboxes.selected();
+            
+            // Iterate over all selected checkboxes
+            if(rows_selected.length > 0){
+                var arr = []
+                $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+                var dates = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'entity_domain_get_dates',
+                           'data_sources': arr.toString()
+                          }
+                    
+                }).responseJSON;
+                 
+
+                var start_date = document.getElementById("selectStartDate2"); 
+                var end_date = document.getElementById("selectEndDate2"); 
 
                 for (i = start_date.length-1; i >= 0; i--) {
                     start_date.options[i] = null;
@@ -270,155 +291,49 @@
     
         
 
-        function deneme2(){
+        function compare(){
             alert('BURADA')
             
-            var track_selected = table_track.column(0).checkboxes.selected();
-            var domain_selected = table_domain.column(0).checkboxes.selected();
-            var arr = [];
+            var track_selected1 = table_track1.column(0).checkboxes.selected();
+            var track_selected2 = table_track2.column(0).checkboxes.selected();
+
+            var arr1 = [];
             var arr2 = []
-            $.each(track_selected, function(index, rowId){arr.push(rowId)});
-            $.each(domain_selected, function(index, rowId){arr2.push(rowId)});
-            var start_date = document.getElementById("selectStartDate").value; 
-            var end_date = document.getElementById("selectEndDate").value; 
-            var node_level = document.querySelector('input[name="node_level"]:checked').value;
-            alert([arr, arr2, start_date, end_date, node_level])
 
-            draw_graph_fancy(arr, arr2);
-        
-            var all_data = $.ajax({
-                type: 'POST',
-                async: false,
-                url: '{% url "analyzer:call_ajax" %}',
-                dataType: 'json',
-                data: {'which':'get_network_data',
-                        'track':arr.toString(),
-                        'domain':arr2.toString(),
-                        'start_date':start_date,
-                        'end_date':end_date,
-                        'node_level':node_level
-                        }
-                
-            }).responseJSON;
+            $.each(track_selected1, function(index, rowId){arr1.push(rowId)});
+            $.each(track_selected2, function(index, rowId){arr2.push(rowId)});
 
-            var results = document.getElementById('results')
+            var start_date1 = document.getElementById("selectStartDate1").value; 
+            var end_date1 = document.getElementById("selectEndDate1").value; 
+
+            var start_date2= document.getElementById("selectStartDate2").value; 
+            var end_date2 = document.getElementById("selectEndDate2").value; 
+
             
-            $.each( all_data['degree_centrality'], function(index, rowId){ results.innerText = results.innerText +'\n Degre -> Edge: ' + index +', value: '+ rowId});
-            $.each( all_data['betweenness_centrality'], function(index, rowId){ results.innerText = results.innerText +'\n Betweenness -> Edge: ' + index +', value: '+ rowId});
+            alert([arr1, arr2, start_date1, end_date1, start_date2, end_date2])
 
-            draw_count(all_data)
-            
-            
-            var nodes = null;
-            var edges = null;
-            var network = null;
-
-
-            function draw() {
-            // create people.
-            // value corresponds with the age of the person
-            nodes = all_data['data2']
-
-            // create connections between people
-            // value corresponds with the amount of contact between two people
-            edges = all_data['data']
-
-            // Instantiate our network object.
-            var container = document.getElementById("mynetwork");
-            var data = {
-                nodes: nodes,
-                edges: edges,
-            };
-            var options = {
-                nodes: {
-                shape: "dot",
-                scaling: {
-                    customScalingFunction: function (min, max, total, value) {
-                    return value / total;
-                    },
-                    min: 5,
-                    max: 150,
-                },
-                },
-                physics: {
-                    stabilization: true
-                },
-                layout: {
-                    randomSeed: 191006,
-                    improvedLayout: true
-                }
-            };
-            network = new vis.Network(container, data, options);
-            network.on("stabilizationIterationsDone", function (params) {
-                network.stopSimulation();
-                network.setOptions( { physics: false } );
-            });
-            
-            network.stabilize(1000); 
-            }
-
-            draw();
-
+            var comparisor_data = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'get_comparisons',
+                           'source1': arr1.toString(),
+                           'source2': arr2.toString(),
+                           'start_date1':start_date1,
+                           'start_date2':start_date1,
+                           'end_date1':end_date1,
+                           'end_date2':end_date2
+                          }
+                    
+                }).responseJSON;
 
         }
  
 
         
 
-        function draw_count(all_data)
-  {
-    
-        // Create chart instance
-      var chart = am4core.create("chartdiv_count", am4charts.XYChart);
-      chart.scrollbarX = new am4core.Scrollbar();
-      // Add data
-      
-      
-      chart.data =eval(all_data['bet_df'])
-      alert(eval(chart.data))
-      var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
-      categoryAxis.dataFields.category = "label";
-      categoryAxis.renderer.grid.template.location = 0;
-      categoryAxis.renderer.minGridDistance = 30;
-      categoryAxis.renderer.labels.template.horizontalCenter = "right";
-      categoryAxis.renderer.labels.template.verticalCenter = "middle";
-      categoryAxis.renderer.labels.template.rotation = 270;
-      categoryAxis.tooltip.disabled = true;
-      categoryAxis.renderer.minHeight = 5;
-
-      var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
-      valueAxis.renderer.minWidth = 5;
-
-      // Create series
-      var series = chart.series.push(new am4charts.ColumnSeries());
-      series.sequencedInterpolation = true;
-      series.dataFields.valueY = "value";
-      series.dataFields.categoryX = "label";
-      series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
-      series.columns.template.strokeWidth = 0;
-
-      series.tooltip.pointerOrientation = "vertical";
-
-      series.columns.template.column.cornerRadiusTopLeft = 10;
-      series.columns.template.column.cornerRadiusTopRight = 10;
-      series.columns.template.column.fillOpacity = 0.8;
-        
-        // on hover, make corner radiuses bigger
-        var hoverState = series.columns.template.column.states.create("hover");
-        hoverState.properties.cornerRadiusTopLeft = 0;
-        hoverState.properties.cornerRadiusTopRight = 0;
-        hoverState.properties.fillOpacity = 1;
-
-        series.columns.template.adapter.add("fill", function(fill, target) {
-          return chart.colors.getIndex(target.dataItem.index);
-        });
-
-        // Cursor
-        chart.cursor = new am4charts.XYCursor();
-  }
-
     </script>
-
 
 
 
@@ -428,8 +343,6 @@
         <div class="card-body">
             <div id="chartdiv5"></div>
             <div id="mynetwork"></div>
-            <div id="results"></div>
-            <div id="chartdiv_count"></div>
         </div>
     </div>
 </div>

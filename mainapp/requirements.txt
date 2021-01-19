@@ -10,3 +10,4 @@ gunicorn==20.0.4
 tweet-preprocessor
 nltk
 textblob
+networkx

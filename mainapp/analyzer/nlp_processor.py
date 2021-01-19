@@ -55,7 +55,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
 
     id_string = ''
     noTable = False
-    check = ''
+    check = pd.DataFrame()
     try:
         check = pd.read_sql_query("""
                 with base as (
@@ -67,8 +67,8 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
                 )
                 select distinct a.tweet_tweet_id
-                from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id
-                where b.tweet_tweet_id is null and processor_name in ('{1}')
+                from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
+                where b.tweet_tweet_id is null 
                 limit 500
             """.format(tracker, proc_name), engine)
         id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
@@ -82,7 +82,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
         if noTable:
             print('Creating processed_tweets table for the first time...')
         
-        if check != '':
+        if not check.empty:
             print('KONTROL ', check)
             print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
         for remainder in range(0,10):
@@ -110,7 +110,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                         and b.id in ({0})
                     )
                     select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
-            """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check == '' else ' 1=2' ), engine)
+            """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ), engine)
 
             if table.shape[0] > 0:
                 punc = False
@@ -149,8 +149,8 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
 
                     twt = TextBlob(cleaned)
 
-                    polarity = ''
-                    subjectivity = ''
+                    polarity = 0
+                    subjectivity = 0
                     pos = ''
                     noun_phrases = ''
 
@@ -166,6 +166,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     if 'noun_phrases' in nlp:
                         noun_phrases = twt.noun_phrases
 
+                    print('SİLLLL: ', cleaned, proc_name, subjectivity, polarity, pos, noun_phrases)
                     return cleaned, proc_name, subjectivity, polarity, pos, noun_phrases
 
                 print('corr: ', corrections)
@@ -173,7 +174,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 
             
 
-                print('OK: ', remainder)
+                print('OK: ', table)
 
                 
                 table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)

@@ -1,5 +1,5 @@
 # pull official base image
-FROM python:3.10.0a4-slim-buster
+FROM python:3.8-alpine
 RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
 && apk add py3-pandas@community
 ENV PYTHONPATH=/usr/lib/python3.8/site-packages

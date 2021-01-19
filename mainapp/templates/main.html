@@ -61,23 +61,8 @@
     <link href="{% static 'dist-assets/css/themes/lite-blue.css' %}" rel="stylesheet" />
     <link href="{% static 'dist-assets/css/plugins/perfect-scrollbar.css' %}" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'dist-assets/css/plugins/fontawesome-5.css' %}" />
-    <link href="{% static 'ist-assets/css/plugins/metisMenu.min.css' %}" rel="stylesheet" />
+    <link href="{% static 'dist-assets/css/plugins/metisMenu.min.css' %}" rel="stylesheet" />
 
-    <script src="{% static 'dist-assets/js/plugins/jquery-3.3.1.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/plugins/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/plugins/perfect-scrollbar.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/tooltip.script.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/script.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/script_2.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/sidebar.large.script.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/plugins/feather.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/plugins/metisMenu.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/layout-sidebar-vertical.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/plugins/dragula.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/board.min.js' %}"></script>
-
-    <script src="{% static 'dist-assets/js/plugins/tagging.min.js' %}"></script>
-    <script src="{% static 'dist-assets/js/scripts/tagging.script.min.js' %}"></script>
 
 
     
@@ -159,9 +144,9 @@
                   >
                   <ul class="mm-collapse">
                     <li class="item-name">
-                      <a href="image.cropper.html"
+                      <a href="{% url 'analyzer:domain_entity_analysis' %}"
                         ><i class="nav-icon i-Crop-2"></i
-                        ><span class="item-name">Image Cropper</span></a
+                        ><span class="item-name">Network Analyzer</span></a
                       >
                     </li>
                     <li class="item-name">

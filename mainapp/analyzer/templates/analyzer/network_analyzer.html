@@ -403,10 +403,10 @@ creditLabel.verticalCenter = "bottom";
     network = new vis.Network(container, data, options);
     network.on("stabilizationIterationsDone", function (params) {
         network.stopSimulation();
-       
+        network.setOptions( { physics: false } );
     });
 
-    //network.stabilize(1000); 
+    network.stabilize(500); 
     }
 
     window.addEventListener("load", () => {

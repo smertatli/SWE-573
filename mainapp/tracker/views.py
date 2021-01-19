@@ -175,16 +175,21 @@ def visualize_accumulations(request):
     trackers = request.POST.get('dummy')
     temp_all = pd.read_sql_query("""
         select 
-            query_name , count(*) as total 
+            a.query_name, 
+            count(*) as total, 
+            avg(case when b.type = 'replied_to' then 1 else 0 end) as replied_to_perc,
+            avg(case when b.type = 'retweeted' then 1 else 0 end) as retweeted_perc,
+            avg(case when b.type = 'quoted' then 1 else 0 end) as quoted_perc,
+            avg(case when b.type is null then 1 else 0 end) as regular_perc
         from 
-            df_merge 
-        where query_name in (
+            df_merge a left join df_tweets_referenced b on a.tweet_tweet_id = b.tweet_id and a.key = b.key
+        where a.query_name in (
                 select distinct query_name
                 from tracker_tracker 
                 where id in ({0}) 
             )
         group by
-            query_name
+            a.query_name
         order by
             count(*) desc
         

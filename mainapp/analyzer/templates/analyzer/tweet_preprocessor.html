@@ -84,7 +84,7 @@
                                     </div>
                                     <div class="col-md-6 form-group mb-3">
                                         <label class="checkbox checkbox-primary" >
-                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_mentions'>><span>Remove Mentions</span><span class="checkmark"></span>
+                                            <input type="checkbox" checked="checked" name='processing_options' class ='preproc' value='remove_mentions'><span>Remove Mentions</span><span class="checkmark"></span>
                                         </label>
                                     </div>
                                     <div class="col-md-6 form-group mb-3">
@@ -228,23 +228,25 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th>name</th>
-                        <th>tracker</th>
-                        <th>stopwords</th>
-                        <th>corrections</th>
-                        <th>preproc</th>
-                        <th>is_active</th>
+                        <th>Name</th>
+                        <th>Tracker</th>
+                        <th>Stopwords</th>
+                        <th>Corrections</th>
+                        <th>Preproc</th>
+                        <th>NLP</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tfoot>
                     <tr>
                         <th></th>
-                        <th>name</th>
-                        <th>tracker</th>
-                        <th>stopwords</th>
-                        <th>corrections</th>
-                        <th>preproc</th>
-                        <th>is_active</th>
+                        <th>Name</th>
+                        <th>Tracker</th>
+                        <th>Stopwords</th>
+                        <th>Corrections</th>
+                        <th>Preproc</th>
+                        <th>NLP</th>
+                        <th>Status</th>
                     </tr>
                 </tfoot>
                 </table>
@@ -256,12 +258,12 @@
                 <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Analyze Selected Processor</button>
            </div>
             <div class="col-md-6">
-                <form action="{% url 'analyzer:tweet_preprocessor_delete' %}" method="POST">
-                    {% csrf_token %}
+                
+                  
                     <input type="hidden"  id='dummy' name='dummy'></input>
-                    <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="delete_processors();">Delete Selected Processors</button>
-                    <div>{{ result }}</div>
-                </form>
+                    <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="cancel_processor();">Delete Selected Processors</button>
+            
+              
             </div>
             
         </div>
@@ -371,7 +373,7 @@
 
     var table_processor = $('#processors').DataTable({
         data: processors,
-        
+        'destroy': true,
         'columnDefs': [
             {
                 'targets': 0,
@@ -435,7 +437,49 @@
     }
 
 
+    function cancel_processor(){
+       
+        selected  = document.getElementById('dummy').value
+        var result_code = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {
+                        'which': 'cancel_processor',
+                        'selected': selected
+                    }
+            }).responseJSON;
+        alert(result_code['result'])
 
+        var processors = $.ajax({
+                type: 'POST',
+                async: false,
+                url: '{% url "analyzer:call_ajax" %}',
+                dataType: 'json',
+                data: {
+                    'which': 'get_processors'
+                }
+        }).responseJSON;
+
+
+        table_processor = $('#processors').DataTable({
+            data: processors,
+            'destroy': true,
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
+    }
 
     
 
@@ -448,7 +492,6 @@
         async: false,
         url: '{% url "analyzer:get_tracks" %}',
         dataType: 'json'
-        
     }).responseJSON;
 
 
@@ -486,29 +529,30 @@
         }).responseJSON;
 
         if(check_for_duplicate_name['status'] == 0 || glorious_name == ''){
-            alert('Name is either empty of there is already a process with the same name. Change process name in Step 6.')
+            alert('Name is either empty or there is already a process with the same name. Change process name in Step 6.')
         } else {
+            //getting selected data sources
             var arr = []
             var rows_selected = table_track.column(0).checkboxes.selected();
             $.each(rows_selected, function(index, rowId){arr.push(rowId)});
-            
 
+            //getting selected preprocessing options
             var arr_preproc = []
             $('input.preproc:checkbox:checked').each(function () {
                 arr_preproc.push($(this).val());
             });
 
+            //getting selected nlp tasks
             var arr_nlp = []
             $('input.nlp_tasks:checkbox:checked').each(function () {
                 arr_nlp.push($(this).val());
             });
             
-
-        
-
+            //getting stopword and custom correction
             stopwords = document.getElementById('stopword_list').value
             corrections = document.getElementById('correction_list').value
             
+            //sending all info to backend to create preprocessor
             var tracks = $.ajax({
                 type: 'POST',
                 async: false,
