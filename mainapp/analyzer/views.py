@@ -225,6 +225,26 @@ def call_ajax(request):
         for dt in table['collected_date']:
             dates.append(dt)
         return JsonResponse({'dates': dates})
+    if which == 'get_processor_dates':
+        arr = request.POST.get('processors')
+        print(arr)
+        if not arr:
+            arr = 'null'
+        table = pd.read_sql_query("""
+            select distinct
+                date(c.tweet_created_at) as collected_date
+            from 
+                df_tweets_processed a, analyzer_processor_nlp b, df_merge c
+            where 
+                a.processor_name = b.name and b.id in ({0}) and a.tweet_tweet_id = c.tweet_tweet_id
+            order by
+                1 
+            """.format(arr), engine)
+        print(table)
+        dates  = []
+        for dt in table['collected_date']:
+            dates.append(dt)
+        return JsonResponse({'dates': dates})
     elif which == 'get_domains':
         table = pd.read_sql_query("""select distinct domain_id, domain_name, domain_desc from df_annotation_domain""", engine)
         domains = []
@@ -618,9 +638,35 @@ def call_ajax(request):
                 
                 distinct.drop_duplicates(inplace=True)
                 distinct['value'] = 1
+ 
                 print(distinct, temp)
 
-                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records')})
+                G_symmetric = nx.Graph() 
+                for index, row in temp.iterrows():
+                    G_symmetric.add_edge(row['from_label'], row['to_label'])
+                print('NETWORK: ', nx.info(G_symmetric))
+                degree_centrality = nx.degree_centrality(G_symmetric)
+                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+                
+                print('HMHMHMHM                            :', xx.keys())
+                aa = []
+                bb = []
+                for i, v in enumerate(xx.keys()):
+                    aa.append([v,xx[v]])
+        
+                for i, v in enumerate(yy.keys()):
+                    bb.append([v,yy[v]])
+                
+                degree_df = pd.DataFrame(aa, columns=['label','value'])
+                bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
+                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+                                    'degree_df': degree_df.to_json(orient='records'),
+                                    'bet_df': bet_df.to_json(orient='records')})
             else:
                 temp = pd.read_sql_query("""
                             with base as (
@@ -673,12 +719,119 @@ def call_ajax(request):
                 
                 distinct.drop_duplicates(inplace=True)
                 distinct['value'] = 1
+                  
                 print(distinct, temp)
 
-                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records')})
+                G_symmetric = nx.Graph() 
+                for index, row in temp.iterrows():
+                    G_symmetric.add_edge(row['from_label'], row['to_label'])
+                print('NETWORK: ', nx.info(G_symmetric))
+                degree_centrality = nx.degree_centrality(G_symmetric)
+                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+                
+                print('HMHMHMHM                            :', xx.keys())
+                aa = []
+                bb = []
+                for i, v in enumerate(xx.keys()):
+                    aa.append([v,xx[v]])
         
-        print('RESULT: ',temp)
-        return JsonResponse('ok', safe=False)
+                for i, v in enumerate(yy.keys()):
+                    bb.append([v,yy[v]])
+                
+                degree_df = pd.DataFrame(aa, columns=['label','value'])
+                bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
+                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+                                    'degree_df': degree_df.to_json(orient='records'),
+                                    'bet_df': bet_df.to_json(orient='records')})
+        
+        #print('RESULT: ',temp)
+        #return JsonResponse('ok', safe=False)
+
+        elif node_level == 'mention':
+            if domain == '':
+                temp = pd.read_sql_query("""
+                            with base as (
+                                    select lower(d.username) as from_user, lower(a.username) as to_user, count(*) as value
+                                    from 
+                                        df_entities a, tracker_tracker b, df_merge c, 
+                                        (
+                                            select a.id as user_id, max(username) as username 
+                                            from df_users a, tracker_tracker b 
+                                            where a.query_name = b.query_name and b.id in ({0})
+                                            group by a.id
+                                        ) d
+                                    where 
+                                        a.tweet_id = c.tweet_tweet_id 
+                                        and a.key=c.key 
+                                        and a.query_name = c.query_name
+                                        and a.query_name = b.query_name 
+                                        and c.tweet_author_id = d.user_id
+                                        and a.category='mentions' 
+                                        and b.id in ({0})
+                                        and date(c.tweet_created_at) between '{1}' and '{2}'
+                                    group by
+                                        lower(d.username), lower(a.username)
+                                    order by 
+                                        count(*) desc
+                                    limit 500
+                                ),
+                                ids as (select distinct from_user as user from base union select distinct to_user as user from base),
+                                ids_rank as (select *, row_number() over (order by user) as id from ids)
+                            select 
+                                a.from_user as from_label, b.id as from, a.to_user as to_label, c.id as to, value
+                            from 
+                                base a, ids_rank b, ids_rank c
+                            where 
+                                a.from_user = b.user and a.to_user = c.user
+
+
+                        """.format(track, start_date, end_date),engine)
+    
+                tmp1 = temp[['from', 'from_label']]
+                tmp2 = temp[['to', 'to_label']]
+            
+                tmp1.columns =['id', 'label']
+                tmp2.columns =['id', 'label']
+                distinct = pd.concat([tmp1, tmp2], axis=0)
+ 
+                distinct.drop_duplicates(inplace=True)
+                distinct['value'] = 1
+
+                print(distinct, temp)
+
+                G_symmetric = nx.Graph() 
+                for index, row in temp.iterrows():
+                    G_symmetric.add_edge(row['from_label'], row['to_label'])
+                print('NETWORK: ', nx.info(G_symmetric))
+                degree_centrality = nx.degree_centrality(G_symmetric)
+                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+                
+                print('HMHMHMHM                            :', xx.keys())
+                aa = []
+                bb = []
+                for i, v in enumerate(xx.keys()):
+                    aa.append([v,xx[v]])
+        
+                for i, v in enumerate(yy.keys()):
+                    bb.append([v,yy[v]])
+                
+                degree_df = pd.DataFrame(aa, columns=['label','value'])
+                bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
+                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+                                    'degree_df': degree_df.to_json(orient='records'),
+                                    'bet_df': bet_df.to_json(orient='records')})
+
     elif which == 'domain_top_entities_graph':
         temp = pd.read_sql_query("""
                 with base as (
@@ -709,13 +862,23 @@ def call_ajax(request):
                 the_dict['children'].append({ 'name': row['entity_name'], 'value': row['total'] })
             arr.append(the_dict)
         return JsonResponse(arr, safe=False)
-    elif which == 'get_comparisons':
+    elif which == 'get_comparisons_hashtag':
         source1 = request.POST.get('source1')
         source2 = request.POST.get('source2')
         start_date1 = request.POST.get('start_date1')
         start_date2 = request.POST.get('start_date2')
         end_date1 = request.POST.get('end_date1')
         end_date2 = request.POST.get('end_date2')
+        temp = pd.read_sql_query("""
+                with period1 as (
+                    select tweet_tweet_id, 1 as period
+                    from df_tweets_processed a, analyzer_processor_nlp b
+                    where (b.id in ({0}) and created_at between {1} and {2}) or (b.id in ({3}) and created_at between {4} and {5})
+                )
+                select * 
+                from (df)
+                """, engine)
+        
     elif which == 'cancel_processor':
         ids = request.POST.get('selected')
         try:

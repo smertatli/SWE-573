@@ -39,7 +39,7 @@ def create_track(request):
             left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0  
             and b.func = 'tracker.tweet_collector.TweetCollector' 
             """.format(trackers), engine)
-        
+        print(temp_all, trackers)
 
         successes = ''
         message = ''
@@ -159,7 +159,7 @@ def get_tracks(request):
          case when coalesce(repeats,0) != 0 then 'Active' else 'Inactive' end status, date_start, date_end
         from tracker_tracker a
         inner join auth_user u on a.user_id = u.id
-        left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0
+        left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0 and b.func = 'tracker.tweet_collector.TweetCollector' 
         """, engine)
     
     arr = []

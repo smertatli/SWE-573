@@ -69,7 +69,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 select distinct a.tweet_tweet_id
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
                 where b.tweet_tweet_id is null 
-                limit 500
+                limit 5000
             """.format(tracker, proc_name), engine)
         id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
     except:
@@ -89,7 +89,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
             table = pd.read_sql_query("""
                 with base as (
                     select distinct
-                        a.tweet_tweet_id, tweet_text, null as name
+                        a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at
                     from
                         df_merge a, tracker_tracker b
                     where
@@ -101,7 +101,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     union 
 
                     select distinct 
-                        tweet_id, text, null as name
+                        tweet_id, text, null as name, date(created_at) as created_at
                     from 
                         df_tweets_referenced_meta a, tracker_tracker b
                     where 

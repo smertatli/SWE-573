@@ -15,7 +15,10 @@
 {% csrf_token %} 
 
 
- 
+<div class="col-md-12">
+    <div class="card mb-4">
+        <div class="card-body" style=>
+
             <!--  SmartWizard html -->
             <div id="smartwizard" class="sw-main sw-theme-default" >
                 <ul class="nav nav-tabs step-anchor">
@@ -28,25 +31,29 @@
                 <div>
                     <div id="step-1">
                         <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
-                            <table id="time_1" class="display" cellspacing="0" width="100%" >
+                            <table id="source_1" class="display" cellspacing="0" width="100%" >
                                 <thead>
                                    <tr>
-                                      <th></th>
-                                      <th>query_name</th>
-                                      <th>query</th>
-                                      <th>frequency_level1</th>
-                                      <th>frequency_level2</th>
-                                      <th>fetch_size</th>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
                                    </tr>
                                 </thead>
                                 <tfoot>
                                    <tr>
-                                      <th></th>
-                                      <th>query_name</th>
-                                      <th>query</th>
-                                      <th>frequency_level1</th>
-                                      <th>frequency_level2</th>
-                                      <th>fetch_size</th>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
                                    </tr>
                                 </tfoot>
                              </table>
@@ -60,25 +67,29 @@
                     <div id="step-3"  >
                         <h3 class="border-bottom border-gray pb-2">Step 3 Content</h3>
                         
-                        <table id="time_2" class="display" cellspacing="0" width="100%" >
+                        <table id="source_2" class="display" cellspacing="0" width="100%" >
                             <thead>
                                <tr>
-                                  <th></th>
-                                  <th>query_name</th>
-                                  <th>query</th>
-                                  <th>frequency_level1</th>
-                                  <th>frequency_level2</th>
-                                  <th>fetch_size</th>
+                                    <th></th>
+                                    <th>Name</th>
+                                    <th>Tracker</th>
+                                    <th>Stopwords</th>
+                                    <th>Corrections</th>
+                                    <th>Preproc</th>
+                                    <th>NLP</th>
+                                    <th>Status</th>
                                </tr>
                             </thead>
                             <tfoot>
                                <tr>
-                                  <th></th>
-                                  <th>query_name</th>
-                                  <th>query</th>
-                                  <th>frequency_level1</th>
-                                  <th>frequency_level2</th>
-                                  <th>fetch_size</th>
+                                    <th></th>
+                                    <th>Name</th>
+                                    <th>Tracker</th>
+                                    <th>Stopwords</th>
+                                    <th>Corrections</th>
+                                    <th>Preproc</th>
+                                    <th>NLP</th>
+                                    <th>Status</th>
                                </tr>
                             </tfoot>
                          </table>
@@ -92,7 +103,10 @@
                     </div>
                 </div>
             </div>
-    
+            
+        </div>
+    </div>
+</div>
 
 
 
@@ -146,17 +160,19 @@
  
 
  
-        var tracks = $.ajax({
+        var processors = $.ajax({
             type: 'POST',
             async: false,
-            url: '{% url "analyzer:get_tracks" %}',
-            dataType: 'json'
-            
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {
+                'which': 'get_processors'
+            }
         }).responseJSON;
 
         
-        var table_track1 = $('#time_1').DataTable({
-            data: tracks,
+        var processors1 = $('#source_1').DataTable({
+            data: processors,
 
             'columnDefs': [
                 {
@@ -169,11 +185,21 @@
             'select': {
                 'style': 'multi'
             },
-            'order': [[1, 'asc']]
+            'order': [[1, 'asc']],
+            'columns': [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    null
+                ]
         });
 
-        var table_track2 = $('#time_2').DataTable({
-            data: tracks,
+        var processors2 = $('#source_2').DataTable({
+            data: processors,
 
             'columnDefs': [
                 {
@@ -186,25 +212,36 @@
             'select': {
                 'style': 'multi'
             },
-            'order': [[1, 'asc']]
+            'order': [[1, 'asc']],
+            'columns': [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    null
+                ]
         });
 
         
 
         function step_first(){
-            var rows_selected = table_track1.column(0).checkboxes.selected();
+            var rows_selected = processors1.column(0).checkboxes.selected();
             
             // Iterate over all selected checkboxes
             if(rows_selected.length > 0){
                 var arr = []
                 $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+                alert(arr)
                 var dates = $.ajax({
                     type: 'POST',
                     async: false,
                     url: '{% url "analyzer:call_ajax" %}',
                     dataType: 'json',
-                    data: {'which':'entity_domain_get_dates',
-                           'data_sources': arr.toString()
+                    data: {'which':'get_processor_dates',
+                           'processors': arr.toString()
                           }
                     
                 }).responseJSON;
@@ -242,7 +279,7 @@
 
 
         function step_second(){
-            var rows_selected = table_track2.column(0).checkboxes.selected();
+            var rows_selected = processors2.column(0).checkboxes.selected();
             
             // Iterate over all selected checkboxes
             if(rows_selected.length > 0){
@@ -253,8 +290,8 @@
                     async: false,
                     url: '{% url "analyzer:call_ajax" %}',
                     dataType: 'json',
-                    data: {'which':'entity_domain_get_dates',
-                           'data_sources': arr.toString()
+                    data: {'which':'get_processor_dates',
+                           'processors': arr.toString()
                           }
                     
                 }).responseJSON;
@@ -292,16 +329,15 @@
         
 
         function compare(){
-            alert('BURADA')
             
-            var track_selected1 = table_track1.column(0).checkboxes.selected();
-            var track_selected2 = table_track2.column(0).checkboxes.selected();
+            var processor_selected1 = processors1.column(0).checkboxes.selected();
+            var processor_selected2 = processors2.column(0).checkboxes.selected();
 
             var arr1 = [];
             var arr2 = []
 
-            $.each(track_selected1, function(index, rowId){arr1.push(rowId)});
-            $.each(track_selected2, function(index, rowId){arr2.push(rowId)});
+            $.each(processor_selected1, function(index, rowId){arr1.push(rowId)});
+            $.each(processor_selected2, function(index, rowId){arr2.push(rowId)});
 
             var start_date1 = document.getElementById("selectStartDate1").value; 
             var end_date1 = document.getElementById("selectEndDate1").value; 
@@ -317,7 +353,7 @@
                     async: false,
                     url: '{% url "analyzer:call_ajax" %}',
                     dataType: 'json',
-                    data: {'which':'get_comparisons',
+                    data: {'which':'get_comparisons_hashtag',
                            'source1': arr1.toString(),
                            'source2': arr2.toString(),
                            'start_date1':start_date1,
@@ -338,14 +374,7 @@
 
 
 
-<div class="col-md-12">
-    <div class="card mb-4">
-        <div class="card-body">
-            <div id="chartdiv5"></div>
-            <div id="mynetwork"></div>
-        </div>
-    </div>
-</div>
+
 
 
 
