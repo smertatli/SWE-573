@@ -17,6 +17,8 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
     nltk.download('brown')
     from nltk.corpus import stopwords
     import string
+    import datetime
+
 
     db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
     settings.DATABASES['default']['USER'],
@@ -57,6 +59,27 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
     noTable = False
     check = pd.DataFrame()
     try:
+        now = datetime.datetime.now()
+        print('MINUTE: ', str(now.minute))
+        if now.minute % 2 == 0:
+            conn = engine.connect()
+            
+            try:
+                conn.execute("""
+                        DELETE FROM df_tweets_processed a USING (
+                        SELECT MIN(ctid) as ctid, processor_name, tweet_tweet_id
+                            FROM df_tweets_processed 
+                            GROUP BY processor_name, tweet_tweet_id 
+                            HAVING COUNT(*) > 1
+                        ) b
+                        WHERE a.tweet_tweet_id = b.tweet_tweet_id and  a.processor_name = b.processor_name
+                        AND a.ctid <> b.ctid
+                """)
+                print('DELETING DUPLICATES: SUCCESS')
+            except Exception as e:
+                print('DELETING DUPLICATES: ', str(e))
+     
+
         check = pd.read_sql_query("""
                 with base as (
                     select distinct tweet_tweet_id from df_merge 
@@ -69,7 +92,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 select distinct a.tweet_tweet_id
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
                 where b.tweet_tweet_id is null 
-                limit 5000
+                limit 50000
             """.format(tracker, proc_name), engine)
         id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
     except:
@@ -89,7 +112,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
             table = pd.read_sql_query("""
                 with base as (
                     select distinct
-                        a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at
+                        a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier
                     from
                         df_merge a, tracker_tracker b
                     where
@@ -101,13 +124,14 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     union 
 
                     select distinct 
-                        tweet_id, text, null as name, date(created_at) as created_at
+                        a.tweet_id, text, null as name, date(created_at) as created_at, count(distinct c.tweet_id) + 1 as multiplier
                     from 
-                        df_tweets_referenced_meta a, tracker_tracker b
+                        df_tweets_referenced_meta a, tracker_tracker b, df_tweets_referenced c
                     where 
-                        a.query_name = b.query_name 
-            
+                        a.query_name = b.query_name and a.tweet_id = c.reference_id and a.key = c.key and a.query_name = c.query_name
                         and b.id in ({0})
+                    group by
+                        a.tweet_id, text, name, date(created_at)
                     )
                     select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
             """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ), engine)
@@ -166,7 +190,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     if 'noun_phrases' in nlp:
                         noun_phrases = twt.noun_phrases
 
-                    print('SİLLLL: ', cleaned, proc_name, subjectivity, polarity, pos, noun_phrases)
+                    print('EN SON SATIR: ', cleaned, proc_name, subjectivity, polarity, pos, noun_phrases)
                     return cleaned, proc_name, subjectivity, polarity, pos, noun_phrases
 
                 print('corr: ', corrections)
@@ -174,7 +198,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 
             
 
-                print('OK: ', table)
+                print('OK: ', remainder)
 
                 
                 table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)

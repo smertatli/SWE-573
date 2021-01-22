@@ -159,7 +159,7 @@
     <script>
  
 
- 
+        var global_data;
         var processors = $.ajax({
             type: 'POST',
             async: false,
@@ -234,7 +234,7 @@
             if(rows_selected.length > 0){
                 var arr = []
                 $.each(rows_selected, function(index, rowId){arr.push(rowId)});
-                alert(arr)
+               
                 var dates = $.ajax({
                     type: 'POST',
                     async: false,
@@ -357,12 +357,19 @@
                            'source1': arr1.toString(),
                            'source2': arr2.toString(),
                            'start_date1':start_date1,
-                           'start_date2':start_date1,
+                           'start_date2':start_date2,
                            'end_date1':end_date1,
                            'end_date2':end_date2
                           }
                     
                 }).responseJSON;
+            
+                global_data = comparisor_data
+                alert(comparisor_data.length)
+                draw_tag(order_by=1, 'chartdiv1')
+                draw_tag(order_by=1, 'chartdiv2')
+                draw_tag(order_by=3, 'chartdiv3')
+            
 
         }
  
@@ -380,88 +387,267 @@
 
 
 
-
-
-
-
-
-<!-- Styles -->
 <style>
-    #chartdiv5 {
+    #chartdiv1 {
       width: 100%;
-    height:550px;
-    max-width:100%;
-    background: rgb(18, 27, 95);
+      height: 500px;
+     
+    }
+
+    #chartdiv2 {
+        width: 100%;
+      height: 500px;
+    position: relative;
+    }
+
+    #chartdiv3 {
+        width: 100%;
+      height: 1000px;
+    position: relative;
+    background: rgb(237, 237, 237);
     }
     </style>
     
     <!-- Resources -->
     <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
-    <script src="https://cdn.amcharts.com/lib/4/plugins/forceDirected.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
     
     <!-- Chart code -->
     <script>
-    function draw_graph_fancy(arr,arr2) {
-    
-    // Themes begin
-    am4core.useTheme(am4themes_animated);
-    // Themes end
-    
-    
-    
-    var chart = am4core.create("chartdiv5", am4plugins_forceDirected.ForceDirectedTree);
-    var networkSeries = chart.series.push(new am4plugins_forceDirected.ForceDirectedSeries())
-    
-    chart.data = $.ajax({
-            type: 'POST',
-            async: false,
-            url: '{% url "analyzer:call_ajax" %}',
-            dataType: 'json',
-            data: {'which':'domain_top_entities_graph', 
-                   'track': arr.toString(),
-                   'domain': arr2.toString()}
+   function draw_tag(order_by, chartname) {
+        
+        var temp_data = global_data
+        var axis1 = ''
+        var axis2 = ''
+        if(chartname == 'chartdiv2'){
+            temp_data = temp_data.filter(d => (d.rank_period1_only <= 50 || d.rank_period2_only <= 50 ))
+            for(i=0; i<temp_data.length; i++){
+                temp_data[i]['rank1'] =  temp_data[i]['rank_period1_only']
+                temp_data[i]['rank2'] =  temp_data[i]['rank_period2_only']
+            }
+            axis1 = 'total_period1'
+            axis2 = 'total_period2'
+        } else if(chartname =='chartdiv1') {
+            temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
+            for(i=0; i<temp_data.length; i++){
+                temp_data[i]['rank1'] =  temp_data[i]['rank_period1']
+                temp_data[i]['rank2'] =  temp_data[i]['rank_period2']
+            }
+            axis1 = 'total_period1'
+            axis2 = 'total_period2'
+        } else {
             
-        }).responseJSON;
-    
-    networkSeries.dataFields.value = "value";
-    networkSeries.dataFields.name = "name";
-    networkSeries.dataFields.children = "children";
-    networkSeries.nodes.template.tooltipText = "{name}:{value}";
-    networkSeries.nodes.template.fillOpacity = 1;
-    
-    networkSeries.nodes.template.label.text = "{name}"
-    networkSeries.fontSize = 10;
-    
-    networkSeries.links.template.strokeWidth = 1;
-    
-    var hoverState = networkSeries.links.template.states.create("hover");
-    hoverState.properties.strokeWidth = 3;
-    hoverState.properties.strokeOpacity = 1;
-    
-    networkSeries.nodes.template.events.on("over", function(event) {
-      event.target.dataItem.childLinks.each(function(link) {
-        link.isHover = true;
-      })
-      if (event.target.dataItem.parentLink) {
-        event.target.dataItem.parentLink.isHover = true;
-      }
-    
-    })
-    
-    networkSeries.nodes.template.events.on("out", function(event) {
-      event.target.dataItem.childLinks.each(function(link) {
-        link.isHover = false;
-      })
-      if (event.target.dataItem.parentLink) {
-        event.target.dataItem.parentLink.isHover = false;
-      }
-    })
-    
+            temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
+            for(i=0; i<temp_data.length; i++){
+                temp_data[i]['rank1'] =  temp_data[i]['rank_period1']
+                temp_data[i]['rank2'] =  temp_data[i]['rank_period2']
+            }
+            axis1 = 'polarity_avg_period1'
+            axis2 = 'polarity_avg_period2'
+            //alert(temp_data.length)
+        }
+
+        if(order_by == 1){
+            temp_data = temp_data.sort((a, b) => (a.rank1 < b.rank1) ? 1 : -1)
+        } else if (order_by==2) {
+            temp_data = temp_data.sort((a, b) => (a.rank2 < b.rank2) ? 1 : -1)
+        } else if (order_by==3){
+            temp_data = temp_data.sort((a, b) => (a.tag < b.tag) ? 1 : -1)
+        }
+        
+
+        // Themes begin
+        am4core.useTheme(am4themes_animated);
+        // Themes end
+        
+        // Create chart instance
+        var chart = am4core.create(chartname, am4charts.XYChart);
+        chart.scrollbarX = new am4core.Scrollbar();
+        
+        // Add data
+        chart.data = temp_data
+        
+        // Create axes
+        var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+        categoryAxis.dataFields.category = "tag";
+        categoryAxis.renderer.grid.template.location = 0;
+        categoryAxis.renderer.minGridDistance = 30;
+        categoryAxis.renderer.labels.template.horizontalCenter = "right";
+        categoryAxis.renderer.labels.template.verticalCenter = "middle";
+        categoryAxis.renderer.labels.template.rotation = 270;
+        categoryAxis.tooltip.disabled = true;
+        categoryAxis.renderer.minHeight = 110;
+        
+        var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+        valueAxis.renderer.minWidth = 50;
+
+        var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+        valueAxis2.renderer.minWidth = 50;
+        valueAxis2.renderer.opposite = true;
+        
+        
+        if(chartname == 'chartdiv3'){
+            var chart = am4core.create("chartdiv3", am4charts.RadarChart);
+            chart.data = temp_data
+            var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+            categoryAxis.dataFields.category = "tag";
+           
+
+            var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+            valueAxis.tooltip.disabled = true;
+            valueAxis.renderer.labels.template.horizontalCenter = "left";
+            valueAxis.min = -1;
+
+            var range = valueAxis.axisRanges.create();
+            range.value = -0.01;
+            range.endValue = 0.01;
+            range.axisFill.fill = am4core.color("#000000");
+            range.axisFill.fillOpacity = 0.2;
+            range.grid.strokeOpacity = 0;
+            range.grid.strokeDasharray= "3,3"
+
+            var series1 = chart.series.push(new am4charts.RadarSeries());
+            series1.dataFields.valueY = axis1;
+            series1.dataFields.categoryX = "tag";
+            series1.name = "sales 1";
+            series1.strokeWidth = 3;
+            series1.stroke = am4core.color("#dd6867");
+            series1.fill = am4core.color("#dd6867");
+           
+            
+
+            var series2 = chart.series.push(new am4charts.RadarSeries());
+            series2.dataFields.valueY = axis2
+            series2.dataFields.categoryX = "tag";
+            series2.name = "sales 2";
+            series2.strokeWidth = 3;
+            series2.stroke = am4core.color("#67b7dc");
+            series2.fill = am4core.color("#67b7dc");
+           
+            chart.seriesContainer.zIndex = -1;
+
+            chart.scrollbarX = new am4core.Scrollbar();
+            chart.scrollbarX.exportable = false;
+            chart.scrollbarY = new am4core.Scrollbar();
+            chart.scrollbarY.exportable = false;
+
+            chart.cursor = new am4charts.RadarCursor();
+            chart.cursor.xAxis = categoryAxis;
+            chart.cursor.fullWidthXLine = true;
+            chart.cursor.lineX.strokeOpacity = 0;
+            chart.cursor.lineX.fillOpacity = 0.1;
+            chart.cursor.lineX.fill = am4core.color("#000000");
+
+
+        
+        } else {
+            // Create series
+            var series = chart.series.push(new am4charts.ColumnSeries());
+            series.sequencedInterpolation = true;
+            series.dataFields.valueY = axis1;
+            series.dataFields.categoryX = "tag"; 
+            series.yAxis = valueAxis;
+            series.columns.template.fill = am4core.color("#dd6867");
+            series.name = "Period 1";
+            series.columns.template.tooltipText = "{name}: [bold]{valueY}[/] \n rank: {rank1}";
+            series.columns.template.strokeWidth = 0;
+            
+            series.tooltip.pointerOrientation = "vertical";
+            
+            series.columns.template.column.cornerRadiusTopLeft = 10;
+            series.columns.template.column.cornerRadiusTopRight = 10;
+            series.columns.template.column.fillOpacity = 0.8;
+            
+            // on hover, make corner radiuses bigger
+            var hoverState = series.columns.template.column.states.create("hover");
+            hoverState.properties.cornerRadiusTopLeft = 0;
+            hoverState.properties.cornerRadiusTopRight = 0;
+            hoverState.properties.fillOpacity = 1;
+
+            
+            
+            
+            //series.columns.template.adapter.add("fill", function(fill, target) {
+            //  return chart.colors.getIndex(target.dataItem.index);
+            //});
+
+
+            // Create series
+            var series2 = chart.series.push(new am4charts.ColumnSeries());
+            series2.sequencedInterpolation = true;
+            series2.dataFields.valueY = axis2;
+            series2.dataFields.categoryX = "tag";
+            series2.columns.template.fill = am4core.color("#67b7dc");
+            series2.name = "Period 2";
+            series2.columns.template.tooltipText = "{name}: [bold]{valueY}[/] \n rank: {rank2}";
+            series2.columns.template.strokeWidth = 0;
+            
+            series2.tooltip.pointerOrientation = "vertical";
+            
+            series2.columns.template.column.cornerRadiusTopLeft = 10;
+            series2.columns.template.column.cornerRadiusTopRight = 10;
+            series2.columns.template.column.fillOpacity = 0.8;
+            
+            // on hover, make corner radiuses bigger
+            var hoverState = series2.columns.template.column.states.create("hover");
+            hoverState.properties.cornerRadiusTopLeft = 0;
+            hoverState.properties.cornerRadiusTopRight = 0;
+            hoverState.properties.fillOpacity = 1;
+            
+        
+        
+        
+            // Cursor
+            chart.cursor = new am4charts.XYCursor();
+        }
+
     }; // end am4core.ready()
+
+    function change_order(order_by){
+        draw_tag(order_by,'chartdiv1')
+    }
+
+
+
+    
     </script>
     
+    <!-- HTML -->
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body" style=>
+                <h3><b>Top Hashtags For Each Period</b></h3>
+                <div id="chartdiv1">
+                    <button onclick="change_order(2)">Sort By Period 2</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body" style=>
+                <h3><b>Top Hashtags For Each Period</b></h3>
+                <div id="chartdiv2">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body" style=>
+                <h3><b>Top Hashtags For Each Period</b></h3>
+                <div id="chartdiv3">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+   
+
    
 
 {% endblock %}
