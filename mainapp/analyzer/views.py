@@ -881,9 +881,9 @@ def call_ajax(request):
                         and a.processor_name = b.name
                 ),
                 tags as (
-                    select distinct a.*, lower(tag) as tag
+                    select distinct a.*, lower(username) as tag
                     from periods a, df_entities b
-                    where a.tweet_tweet_id = b.tweet_id and b.category = 'hashtags' and rc = 1
+                    where a.tweet_tweet_id = b.tweet_id and b.category = 'mentions' and rc = 1
                 ),
                 agg as (
                     select tag, avg(period) as freq, count(distinct tweet_tweet_id) as total, sum(polarity*multiplier)/sum(multiplier) as polarity_avg,
@@ -899,12 +899,12 @@ def call_ajax(request):
                         total,
                         case when polarity_avg_period1 is null then 0 else polarity_avg_period1 end as polarity_avg_period1,
                         case when polarity_avg_period2 is null then 0 else polarity_avg_period2 end as polarity_avg_period2,
-                        (total*freq)::int total_period1, 
-                        row_number() over (order by case when total*freq > 0 then total*freq else 0 end desc) as rank_period1, 
-                        (total*(1-freq))::int total_period2, 
-                        row_number() over (order by case when total*(1-freq) > 0 then total*(1-freq) else 0 end desc) as rank_period2, 
-                        row_number() over (order by case when (1-freq) = 0 then total*freq else 0 end desc) as rank_period1_only, 
-                        row_number() over (order by case when freq = 0 then total*(1-freq) else 0 end desc) as rank_period2_only
+                        (total*(1-freq))::int total_period1, 
+                        row_number() over (order by case when total*(1-freq) > 0 then total*(1-freq) else 0 end desc) as rank_period1, 
+                        (total*freq)::int total_period2, 
+                        row_number() over (order by case when total*freq > 0 then total*freq else 0 end desc) as rank_period2, 
+                        row_number() over (order by case when freq = 0 then total*(1-freq) else 0 end desc) as rank_period1_only, 
+                        row_number() over (order by case when 1-freq = 0 then total*freq else 0 end desc) as rank_period2_only
                     from agg  
                 ) 
                 

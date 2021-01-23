@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login
+from django.contrib.auth import logout as django_logout
 from .forms import UserForm
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect, HttpResponse
@@ -14,6 +15,7 @@ import re
 import twitter
 from collections import OrderedDict
 from .fusioncharts import FusionCharts
+
 
 CONSUMER_KEY = "sJJJUWkvfvpZYcbY0buMRYup7"
 CONSUMER_SECRET = "iDQB0WGuOsY7ITZCYwZEk2o7a2kxiSKn6kFg3NZFO4ca11LoYA" 
@@ -134,3 +136,13 @@ def myFirstChart(request):
 })
 
 
+def logout(request):
+    print('LOG OUTTTT',request.user, request.user.is_authenticated)
+    django_logout(request)
+    return HttpResponseRedirect('/')
+
+def check_user(request):
+    if request.user.is_authenticated:
+        return HttpResponseRedirect(reverse('tracker:create_track'))
+    else:
+        return HttpResponseRedirect(reverse('accounts:login'))
