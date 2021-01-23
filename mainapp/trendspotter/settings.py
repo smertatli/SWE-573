@@ -138,5 +138,6 @@ Q_CLUSTER = {
     'retry': 10000000000,
     'queue_limit': 50,
     'bulk': 10,
-    'orm': 'default'
+    'orm': 'default',
+    'catch_up': False
 }

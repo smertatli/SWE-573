@@ -870,15 +870,51 @@ def call_ajax(request):
         end_date1 = request.POST.get('end_date1')
         end_date2 = request.POST.get('end_date2')
         temp = pd.read_sql_query("""
-                with period1 as (
-                    select tweet_tweet_id, 1 as period
+                with periods as (
+                    select tweet_tweet_id, case when (b.id in ({0}) and created_at between '{1}' and '{2}') then 0 else 1 end as period, polarity, multiplier,
+                    row_number() over (partition by 
+                                            case when (b.id in ({0}) and created_at between '{1}' and '{2}') then 0 else 1 end, tweet_tweet_id 
+                                       order by random()) as rc
                     from df_tweets_processed a, analyzer_processor_nlp b
-                    where (b.id in ({0}) and created_at between {1} and {2}) or (b.id in ({3}) and created_at between {4} and {5})
-                )
-                select * 
-                from (df)
-                """, engine)
+                    where 
+                        ((b.id in ({0}) and created_at between '{1}' and '{2}') or (b.id in ({3}) and created_at between '{4}' and '{5}'))
+                        and a.processor_name = b.name
+                ),
+                tags as (
+                    select distinct a.*, lower(username) as tag
+                    from periods a, df_entities b
+                    where a.tweet_tweet_id = b.tweet_id and b.category = 'mentions' and rc = 1
+                ),
+                agg as (
+                    select tag, avg(period) as freq, count(distinct tweet_tweet_id) as total, sum(polarity*multiplier)/sum(multiplier) as polarity_avg,
+                    avg(case when period = 0 then polarity end) polarity_avg_period1,
+                    avg(case when period = 1 then polarity end) polarity_avg_period2
+                    from tags
+                    group by tag
+                ),
+                all_data as (
+                    select 
+                        tag, 
+                        freq,
+                        total,
+                        case when polarity_avg_period1 is null then 0 else polarity_avg_period1 end as polarity_avg_period1,
+                        case when polarity_avg_period2 is null then 0 else polarity_avg_period2 end as polarity_avg_period2,
+                        (total*(1-freq))::int total_period1, 
+                        row_number() over (order by case when total*(1-freq) > 0 then total*(1-freq) else 0 end desc) as rank_period1, 
+                        (total*freq)::int total_period2, 
+                        row_number() over (order by case when total*freq > 0 then total*freq else 0 end desc) as rank_period2, 
+                        row_number() over (order by case when freq = 0 then total*(1-freq) else 0 end desc) as rank_period1_only, 
+                        row_number() over (order by case when 1-freq = 0 then total*freq else 0 end desc) as rank_period2_only
+                    from agg  
+                ) 
+                
+                    select *
+                    from all_data where rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
+                
+                """.format(source1, start_date1, end_date1,source2, start_date2, end_date2), engine)
         
+        return JsonResponse(temp.to_dict(orient='row'), safe=False)
+    
     elif which == 'cancel_processor':
         ids = request.POST.get('selected')
         try:
