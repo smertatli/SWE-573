@@ -3,7 +3,7 @@
 ###########
 
 # pull official base image
-FROM python:3.8.3-alpine as builder
+FROM python:3.8-alpine as builder
 RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
 && apk add py3-pandas@community
 ENV PYTHONPATH=/usr/lib/python3.8/site-packages
@@ -34,7 +34,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/mainapp/wheels -r re
 #########
 
 # pull official base image
-FROM python:3.8.3-alpine
+FROM python:3.8-alpine
 
 # create directory for the app user
 RUN mkdir -p /home/mainapp
