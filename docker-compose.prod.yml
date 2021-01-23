@@ -5,7 +5,7 @@ services:
     build: 
       context: ./mainapp
       dockerfile: Dockerfile.prod
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn hello_django.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - ./mainapp/:/usr/src/mainapp/
     ports:
@@ -15,7 +15,15 @@ services:
     stdin_open: true
     networks:
       - postgres
-  
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+    ports:
+      - 1337:80
+    depends_on:
+      - web
 
-
+volumes:
+  static_volume:
 
