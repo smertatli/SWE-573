@@ -6,10 +6,11 @@
 
 {% block content %}
 
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
+
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css' %}" />
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css' %}" />
 
 
 {% csrf_token %} 
@@ -341,8 +342,8 @@
 <script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
 <link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
 
-<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
-<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+<script src="{% static 'dist-assets/js/plugins/jquery.smartWizard.min.js' %}"></script>
+<script src="{% static 'dist-assets/js/scripts/smart.wizard.script.min.js' %}"></script>
 
 
 <style>

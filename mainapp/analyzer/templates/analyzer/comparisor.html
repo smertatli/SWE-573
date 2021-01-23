@@ -6,10 +6,10 @@
 
 {% block content %}
 
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css" />
-<link rel="stylesheet" href="/static/dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css" />
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css' %}" />
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css' %}" />
 
 
 {% csrf_token %} 
@@ -114,8 +114,8 @@
 
 
 
-<script src="/static/dist-assets/js/plugins/jquery.smartWizard.min.js"></script>
-<script src="/static/dist-assets/js/scripts/smart.wizard.script.min.js"></script>
+<script src="{% static 'dist-assets/js/plugins/jquery.smartWizard.min.js' %}"></script>
+<script src="{% static 'dist-assets/js/scripts/smart.wizard.script.min.js' %}"></script>
 
 
 
