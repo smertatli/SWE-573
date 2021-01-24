@@ -23,7 +23,8 @@
                     <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
-                    <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-4" class="nav-link" >Step 4<br><small>This is step description</small></a></li>
+                    <li class="nav-item" style='display: none;' id ='processor_selector'><a href="#step-5" class="nav-link">Step 5<br><small>This is step description</small></a></li>
                    
                 </ul>
                 <div>
@@ -82,35 +83,56 @@
                         <h3 class="border-bottom border-gray pb-2">Step 4 Content</h3>
                         
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="domain"><span>Domain</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="domain" onclick="show_processor_pane('no')"><span>Domain</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="entity"><span>Entity</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="entity" onclick="show_processor_pane('no')"><span>Entity</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="hashtag"><span>Hashtag</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="hashtag" onclick="show_processor_pane('no')"><span>Hashtag</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="mention"><span>Mention</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="mention" onclick="show_processor_pane('no')"><span>Mention</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="mention_cooccurrence"><span>Mention Cooccurence</span><span class="checkmark"></span>
-                        </label>
-
-                        
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="word"><span>Words</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="mention_cooccurrence" onclick="show_processor_pane('no')"><span>Mention Cooccurence</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="noun"><span>Nouns</span><span class="checkmark"></span>
+                            <input type="radio" name="node_level" value="bigram" onclick="show_processor_pane('processor')"><span>Bigrams</span><span class="checkmark"></span>
                         </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="bigram"><span>Bigrams</span><span class="checkmark"></span>
-                        </label>
-                        <label class="radio radio-primary">
-                            <input type="radio" name="node_level" value="noun_phrase"><span>Noun Phrases</span><span class="checkmark"></span>
-                        </label>
+                        <b>Get Top N most frequent:</b>
+                        <input type='text' id='top_n'></input>
+                 
                        
+                    </div>
+                    <div id="step-5"  >
+                        <table id="processor_table" class="display" cellspacing="0" width="100%" >
+                            <input type="hidden"  id='dummy' name='dummy'></input>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Name</th>
+                                    <th>Tracker</th>
+                                    <th>Stopwords</th>
+                                    <th>Corrections</th>
+                                    <th>Preproc</th>
+                                    <th>NLP</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tfoot>
+                                <tr>
+                                    <th></th>
+                                    <th>Name</th>
+                                    <th>Tracker</th>
+                                    <th>Stopwords</th>
+                                    <th>Corrections</th>
+                                    <th>Preproc</th>
+                                    <th>NLP</th>
+                                    <th>Status</th>
+                                </tr>
+                            </tfoot>
+                            </table>
                     </div>
                 </div>
             </div>
@@ -176,7 +198,42 @@
 
     <script>
  
+        function show_processor_pane(x){
+            el = document.getElementById('processor_selector')
+            if (x == "processor") {
+                el.style.display = "block";
+            } else {
+                el.style.display = "none";
+            }
+        }
 
+        var processors = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {
+                'which': 'get_processors'
+            }
+        }).responseJSON;
+
+
+        var table_processor = $('#processor_table').DataTable({
+            data: processors,
+            'destroy': true,
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']]
+        });
  
         var tracks = $.ajax({
             type: 'POST',
@@ -298,7 +355,7 @@
             var node_level = document.querySelector('input[name="node_level"]:checked').value;
             alert([arr, arr2, start_date, end_date, node_level])
 
-            draw_graph_fancy(arr, arr2);
+            //draw_graph_fancy(arr, arr2);
         
             var all_data = $.ajax({
                 type: 'POST',
@@ -310,7 +367,9 @@
                         'domain':arr2.toString(),
                         'start_date':start_date,
                         'end_date':end_date,
-                        'node_level':node_level
+                        'node_level':node_level,
+                        'processor': document.getElementById('dummy').value,
+                        'top_n': document.getElementById('top_n').value
                         }
                 
             }).responseJSON;
@@ -329,7 +388,7 @@
             var network = null;
 
 
-            function draw() {
+            function draw(node_level) {
             // create people.
             // value corresponds with the age of the person
             nodes = all_data['data2']
@@ -367,12 +426,13 @@
                         type: "dynamic",
                         forceDirection: "horizontal",
                         roundness: 0.0
-                    },
-                    //arrows: {
-                    //    to: { enabled: true, scaleFactor: 1, type: "arrow" }
-                    //}
+                    }
                 },
             };
+            if(node_level == 'mention'){
+                options['edges']['arrows'] = {to: { enabled: true, scaleFactor: 1, type: "arrow" }}
+            } 
+
             network = new vis.Network(container, data, options);
             network.on("stabilizationIterationsDone", function (params) {
                 network.stopSimulation();
@@ -382,13 +442,21 @@
             network.stabilize(1000); 
             }
 
-            draw();
+            draw(node_level);
 
 
         }
  
 
         
+        $('#processor_table tbody').on('change', 'input[type="checkbox"]', function() {
+        arr_selected_procs = []
+        
+        var rows_selected = table_processor.column(0).checkboxes.selected();
+        document.getElementById('dummy').value =''
+        $.each(rows_selected, function(index, rowId){arr_selected_procs.push(rowId);  document.getElementById('dummy').value = document.getElementById('dummy').value + ','+rowId});
+        document.getElementById('dummy').value = document.getElementById('dummy').value.slice(1,)
+        });
 
         function draw_count(all_data)
   {
@@ -501,7 +569,7 @@
 <div class="col-md-12">
     <div class="card mb-4">
         <div class="card-body">
-            <div id="chartdiv5"></div>
+          
             <div id="mynetwork"></div>
             <div id="results"></div>
             <h1>Degree Centralities</h1>

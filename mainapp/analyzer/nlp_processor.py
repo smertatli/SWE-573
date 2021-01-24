@@ -82,12 +82,13 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
 
         check = pd.read_sql_query("""
                 with base as (
-                    select distinct tweet_tweet_id from df_merge 
+                    select distinct tweet_tweet_id from tweet_main_table 
                     where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
                     and tweet_text not like 'RT%'
                     union 
-                    select distinct tweet_id from df_tweets_referenced_meta  
-                    where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
+                    select distinct retweeted_tweet_id 
+                    from tweet_main_table 
+                    where query_name in (select distinct query_name from tracker_tracker where id in ({0})) and retweeted_tweet_id is not null
                 )
                 select distinct a.tweet_tweet_id
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
@@ -114,7 +115,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     select distinct
                         a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier
                     from
-                        df_merge a, tracker_tracker b
+                        tweet_main_table a, tracker_tracker b
                     where
                         a.query_name = b.query_name 
                     
@@ -123,15 +124,18 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
 
                     union 
 
-                    select distinct 
-                        a.tweet_id, text, null as name, date(created_at) as created_at, count(distinct c.tweet_id) + 1 as multiplier
-                    from 
-                        df_tweets_referenced_meta a, tracker_tracker b, df_tweets_referenced c
-                    where 
-                        a.query_name = b.query_name and a.tweet_id = c.reference_id and a.key = c.key and a.query_name = c.query_name
+                    select distinct
+                        a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier
+                    from
+                        tweet_main_table a, tracker_tracker b
+                    where
+                        a.query_name = b.query_name 
+                    
+                        and retweeted_tweet_id is not null
                         and b.id in ({0})
                     group by
-                        a.tweet_id, text, name, date(created_at)
+                        a.retweeted_tweet_id, retweeted_text, date(tweet_created_at)
+                    
                     )
                     select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
             """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ), engine)

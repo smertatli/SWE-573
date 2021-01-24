@@ -26,7 +26,7 @@
                     <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-4" class="nav-link">Step 4<br><small>This is step description</small></a></li>
-                   
+                    <li class="nav-item"><a href="#step-5" class="nav-link">Step 5<br><small>This is step description</small></a></li>
                 </ul>
                 <div>
                     <div id="step-1">
@@ -99,6 +99,17 @@
                         <button   onclick='step_second();'>Get collected dates</button>
                         <select name="date_start2" id="selectStartDate2"></select>
                         <select name="date_end2" id="selectEndDate2"></select>
+                       
+                    </div>
+                    <div id="step-5"  >
+                        <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
+                        Comparison Level
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='hashtags'><span>Hashtag</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='mentions'><span>Mention</span><span class="checkmark"></span>
+                        </label>
                        
                     </div>
                 </div>
@@ -346,21 +357,23 @@
             var start_date2= document.getElementById("selectStartDate2").value; 
             var end_date2 = document.getElementById("selectEndDate2").value; 
 
+            var comparison_level = document.querySelector('input[name="comparison_level"]:checked').value;
             
-            alert([arr1, arr2, start_date1, end_date1, start_date2, end_date2])
+            alert([arr1, arr2, start_date1, end_date1, start_date2, end_date2, comparison_level])
 
             var comparisor_data = $.ajax({
                     type: 'POST',
                     async: false,
                     url: '{% url "analyzer:call_ajax" %}',
                     dataType: 'json',
-                    data: {'which':'get_comparisons_hashtag',
+                    data: {'which':'get_comparisons_metrics',
                            'source1': arr1.toString(),
                            'source2': arr2.toString(),
                            'start_date1':start_date1,
                            'start_date2':start_date2,
                            'end_date1':end_date1,
-                           'end_date2':end_date2
+                           'end_date2':end_date2,
+                           'level':comparison_level
                           }
                     
                 }).responseJSON;
