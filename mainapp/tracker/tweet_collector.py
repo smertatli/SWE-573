@@ -126,3 +126,5 @@ def insertTweets(main, query_name=''):
     df_annotation_domain.to_sql('df_annotation_domain', engine, if_exists='append', index=False)
     df_annotation_entity.to_sql('df_annotation_entity', engine, if_exists='append', index=False)
     df_entities.to_sql('df_entities', engine, if_exists='append', index=False)
+
+    engine.dispose()

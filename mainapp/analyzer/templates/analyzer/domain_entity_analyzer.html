@@ -94,6 +94,11 @@
                             <input type="radio" name="node_level" value="mention"><span>Mention</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
+                            <input type="radio" name="node_level" value="mention_cooccurrence"><span>Mention Cooccurence</span><span class="checkmark"></span>
+                        </label>
+
+                        
+                        <label class="radio radio-primary">
                             <input type="radio" name="node_level" value="word"><span>Words</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
@@ -280,7 +285,7 @@
         
 
         function deneme2(){
-            alert('BURADA')
+             
             
             var track_selected = table_track.column(0).checkboxes.selected();
             var domain_selected = table_domain.column(0).checkboxes.selected();

@@ -456,54 +456,94 @@ def call_ajax(request):
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
         node_level = request.POST.get('node_level')
-        print('OKOOOOOOOO:', track)
+
         if not domain:
             domain =''
         temp = ''
         if node_level == 'domain':
             
-            temp = pd.read_sql_query("""
+            temp = pd.read_sql_query(""" 
                 with base as (
-                    select distinct tweet_id
-                    from df_annotations a, tracker_tracker b
-                    where a.query_name = b.query_name and (a.domain_id::int in ({3} and b.id in ({0}) and date(a.key) between '{1}' and '{2}'
+                    select 
+                        distinct tweet_id
+                    from 
+                        df_annotations a, 
+                        tracker_tracker b, 
+                        df_merge c
+                    where 
+                        a.query_name = b.query_name 
+                        and (a.domain_id::int in ({3} and b.id in ({0}) 
+                        and a.tweet_id = c.tweet_tweet_id
+                        and a.key = c.key
+                        and date(c.tweet_created_at) between '{1}' and '{2}'
                 ),
                 base2 as (
-                    select distinct a.tweet_id, a.domain_id
-                    from df_annotations a, base b
-                    where a.tweet_id = b.tweet_id and (a.domain_id::int not in ({3} 
+                    select 
+                        distinct a.tweet_id, a.domain_id
+                    from 
+                        df_annotations a, base b
+                    where 
+                        a.tweet_id = b.tweet_id and (a.domain_id::int not in ({3} 
                 ),
-                domains as (select domain_id, max(lower(domain_name)) as domain_name from df_annotation_domain group by domain_id)
-                select c.domain_name as from_name, c.domain_id as from, d.domain_name as to_name, d.domain_id as to, count(*) as value
-                from base2 a, base2 b, domains c, domains d
-                where a.tweet_id = b.tweet_id and c.domain_name < d.domain_name and a.domain_id = c.domain_id and b.domain_id = d.domain_id
-                group by c.domain_name, d.domain_name, c.domain_id, d.domain_id
-                order by count(*) desc
+                values as (
+                    select domain_id, count(*) as node_size from base2 group by domain_id
+                ),
+                domains as (
+                    select 
+                        domain_id, max(lower(domain_name)) as domain_name 
+                    from 
+                        df_annotation_domain 
+                    group by 
+                        domain_id
+                )
+                select 
+                    c.domain_name as from_name, c.domain_id as from, v1.node_size as from_size,
+                    d.domain_name as to_name, d.domain_id as to, v2.node_size as to_size, 
+                    count(*) as value
+                from 
+                    base2 a, 
+                    base2 b, 
+                    domains c, 
+                    domains d,
+                    values v1,
+                    values v2
+                where 
+                    a.tweet_id = b.tweet_id 
+                    and a.domain_id = c.domain_id 
+                    and b.domain_id = d.domain_id
+                    and c.domain_name < d.domain_name 
+                    and a.domain_id = v1.domain_id 
+                    and b.domain_id = v2.domain_id
+                group by 
+                    c.domain_name, 
+                    d.domain_name,
+                    c.domain_id, 
+                    d.domain_id,
+                    v1.node_size,
+                    v2.node_size
+                order by 
+                    count(*) desc
                 limit 2000
             """.format(track, start_date, end_date, (domain+'))') if domain > '' else "1) or 1=1)"), engine)
-            tmp1 = temp[['from', 'from_name']]
-            tmp2 = temp[['to', 'to_name']]
-            import random
-            tmp1['value'] = 1
-            tmp2['value'] = 1
+            tmp1 = temp[['from', 'from_name', 'from_size']]
+            tmp2 = temp[['to', 'to_name', 'to_size']]
             tmp1.columns =['id', 'label', 'value']
             tmp2.columns =['id', 'label', 'value']
             distinct = pd.concat([tmp1, tmp2], axis=0)
-            
             distinct.drop_duplicates(inplace=True)
-            distinct['value'] = [int(random.random()*100) for i in range(0, distinct.shape[0])]
+           
             print(distinct, temp)
             
             G_symmetric = nx.Graph() 
             for index, row in temp.iterrows():
                 G_symmetric.add_edge(row['from_name'], row['to_name'])
-            print('NETWORK: ', nx.info(G_symmetric))
+            
             degree_centrality = nx.degree_centrality(G_symmetric)
             betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            
             xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
             yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
             
-            print('HMHMHMHM                            :', xx.keys())
             aa = []
             bb = []
             for i, v in enumerate(xx.keys()):
@@ -515,11 +555,8 @@ def call_ajax(request):
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
 
-            print('NETWORK: ', nx.info(G_symmetric), degree_centrality)
-            print('NETWORK 2: ', betweenness_centrality)
-            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
-                                 'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 
+                                 'data2': distinct.to_dict(orient='records'),
                                  'degree_df': degree_df.to_json(orient='records'),
                                  'bet_df': bet_df.to_json(orient='records')})
 
@@ -528,52 +565,62 @@ def call_ajax(request):
             
             temp = pd.read_sql_query("""
                 with base as (
-                    select tweet_id, entity_id, max(domain_id) as domain_id
-                    from df_annotations a, tracker_tracker b
-                    where a.query_name = b.query_name and (a.domain_id::int in ({3} and b.id in ({0}) and date(a.key) between '{1}' and '{2}'
-                    group by tweet_id, entity_id
+                     select 
+                        tweet_id, entity_id, max(domain_id) as domain_id
+                    from 
+                        df_annotations a, 
+                        tracker_tracker b, 
+                        df_merge c
+                    where 
+                        a.query_name = b.query_name 
+                        and (a.domain_id::int in ({3} and b.id in ({0}) 
+                        and a.tweet_id = c.tweet_tweet_id
+                        and a.key = c.key
+                        and date(c.tweet_created_at) between '{1}' and '{2}'
+                    group by
+                        tweet_id, entity_id
                 ),
+                values as (select entity_id, count(*) node_size from base group by entity_id),
                 entities as (select entity_id, max(lower(entity_name)) as entity_name from df_annotation_entity group by entity_id),
                 domains as (select domain_id, max(lower(domain_name)) as domain_name from df_annotation_domain group by domain_id)
                 select 
-                    ent1.entity_name as from_name, ent1.entity_id as from, ent2.entity_name as to_name, ent2.entity_id as to, 
-                    c.domain_name as from_domain, d.domain_name as from_domain, count(*) as value
+                    ent1.entity_name as from_name, ent1.entity_id as from, v1.node_size as from_size,
+                    ent2.entity_name as to_name, ent2.entity_id as to, v2.node_size as to_size,
+                    c.domain_name as from_domain, d.domain_name as to_domain, 
+                    count(*) as value
                 from 
-                    base a, base b, domains c, domains d, entities ent1, entities ent2
+                    base a, base b, domains c, domains d, entities ent1, entities ent2, values v1, values v2
                 where 
                     a.tweet_id = b.tweet_id and ent1.entity_name < ent2.entity_name and 
                     a.domain_id = c.domain_id and b.domain_id = d.domain_id and
-                    a.entity_id = ent1.entity_id and b.entity_id = ent2.entity_id
+                    a.entity_id = ent1.entity_id and b.entity_id = ent2.entity_id and
+                    a.entity_id = v1.entity_id and b.entity_id = v2.entity_id
 
                 group by 
-                    ent1.entity_name, ent2.entity_name, ent1.entity_id, ent2.entity_id, c.domain_name, d.domain_name
+                    ent1.entity_name, ent2.entity_name, ent1.entity_id, ent2.entity_id, c.domain_name, d.domain_name, v1.node_size, v2.node_size
                 order by 
                     count(*) desc
-                limit 500
+                limit 1000
             """.format(track, start_date, end_date, (domain+'))') if domain > '' else "1) or 1=1)"), engine)
-            tmp1 = temp[['from', 'from_name']]
-            tmp2 = temp[['to', 'to_name']]
-            import random
-            tmp1['value'] = 1
-            tmp2['value'] = 1
+            tmp1 = temp[['from', 'from_name', 'from_size']]
+            tmp2 = temp[['to', 'to_name', 'to_size']]
             tmp1.columns =['id', 'label', 'value']
             tmp2.columns =['id', 'label', 'value']
             distinct = pd.concat([tmp1, tmp2], axis=0)
-            
             distinct.drop_duplicates(inplace=True)
-            distinct['value'] = [int(random.random()*100) for i in range(0, distinct.shape[0])]
+           
             print(distinct, temp)
-
+            
             G_symmetric = nx.Graph() 
             for index, row in temp.iterrows():
                 G_symmetric.add_edge(row['from_name'], row['to_name'])
-            print('NETWORK: ', nx.info(G_symmetric))
+            
             degree_centrality = nx.degree_centrality(G_symmetric)
             betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            
             xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
             yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
             
-            print('HMHMHMHM                            :', xx.keys())
             aa = []
             bb = []
             for i, v in enumerate(xx.keys()):
@@ -585,10 +632,7 @@ def call_ajax(request):
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
 
-            print('+++++++++++++++++++++++++++++++++++++++', degree_df.to_json(orient='records'))
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                 'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
-                                 'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
                                  'degree_df': degree_df.to_json(orient='records'),
                                  'bet_df': bet_df.to_json(orient='records')})
         elif node_level == 'hashtag':
@@ -607,66 +651,28 @@ def call_ajax(request):
                                     and date(c.tweet_created_at) between '{1}' and '{2}'
                             ),
                             base2 as (
-                                select tag, count(*) as tot from base where tag != 'bekarlıksultanlıkmı' group by tag
+                                select tag, count(*) as node_size from base group by tag
                             ),
                             base3 as (
-                                select tag, row_number() over (order by tot desc) as id from base2
+                                select tag, node_size, row_number() over (order by node_size desc) as id from base2
                             ),
                             base4 as (
-                                select a.tag as from_label, c.id as from, b.tag as to_label, d.id as to, count(*) as value
+                                select a.tag as from_name, c.id as from, c.node_size as from_size,
+                                b.tag as to_name, d.id as to, d.node_size as to_size,
+                                count(*) as value
                                 from base a, base b, base3 c, base3 d
                                 where 
                                     a.tweet_id = b.tweet_id 
                                     and a.tag < b.tag and
                                     a.tag = c.tag and
                                     b.tag = d.tag
-                                group by a.tag, b.tag, c.id, d.id
+                                group by a.tag, b.tag, c.id, d.id, c.node_size, d.node_size
                                 order by count(*) desc
                             )
                             select *
                             from base4
                             limit 500
                         """.format(track, start_date, end_date),engine)
-    
-                tmp1 = temp[['from', 'from_label']]
-                tmp2 = temp[['to', 'to_label']]
-                tmp1['value'] = 1
-                tmp2['value'] = 1
-                tmp1.columns =['id', 'label', 'value']
-                tmp2.columns =['id', 'label', 'value']
-                distinct = pd.concat([tmp1, tmp2], axis=0)
-                
-                distinct.drop_duplicates(inplace=True)
-                distinct['value'] = 1
- 
-                print(distinct, temp)
-
-                G_symmetric = nx.Graph() 
-                for index, row in temp.iterrows():
-                    G_symmetric.add_edge(row['from_label'], row['to_label'])
-                print('NETWORK: ', nx.info(G_symmetric))
-                degree_centrality = nx.degree_centrality(G_symmetric)
-                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-                
-                print('HMHMHMHM                            :', xx.keys())
-                aa = []
-                bb = []
-                for i, v in enumerate(xx.keys()):
-                    aa.append([v,xx[v]])
-        
-                for i, v in enumerate(yy.keys()):
-                    bb.append([v,yy[v]])
-                
-                degree_df = pd.DataFrame(aa, columns=['label','value'])
-                bet_df = pd.DataFrame(bb, columns=['label','value'])
-
-                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
-                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
-                                    'degree_df': degree_df.to_json(orient='records'),
-                                    'bet_df': bet_df.to_json(orient='records')})
             else:
                 temp = pd.read_sql_query("""
                             with base as (
@@ -682,7 +688,7 @@ def call_ajax(request):
                                     and date(c.tweet_created_at) between '{1}' and '{2}'
                             ),
                             base2 as (
-                                select tag, count(*) as tot from base where tag != 'bekarlıksultanlıkmı' group by tag
+                                select tag, count(*) as node_size from base group by tag
                             ),
                             domains as (
                                 select distinct tweet_id 
@@ -690,10 +696,12 @@ def call_ajax(request):
                                 where a.query_name = b.query_name and domain_id::int in ({3}) and b.id in ({0})
                             ),
                             base3 as (
-                                select tag, row_number() over (order by tot desc) as id from base2
+                                select tag, node_size, row_number() over (order by node_size desc) as id from base2
                             ),
                             base4 as (
-                                select a.tag as from_label, c.id as from, b.tag as to_label, d.id as to, count(*) as value
+                                select a.tag as from_name, c.id as from, c.node_size as from_size,
+                                b.tag as to_name, d.id as to, d.node_size as to_size,
+                                count(*) as value
                                 from base a, base b, base3 c, base3 d, domains e
                                 where 
                                     a.tweet_id = b.tweet_id 
@@ -701,7 +709,7 @@ def call_ajax(request):
                                     and a.tag < b.tag and
                                     a.tag = c.tag and
                                     b.tag = d.tag
-                                group by a.tag, b.tag, c.id, d.id
+                                group by a.tag, b.tag, c.id, d.id, c.node_size, d.node_size
                                 order by count(*) desc
                             )
                             select *
@@ -709,52 +717,85 @@ def call_ajax(request):
                             limit 300
                         """.format(track, start_date, end_date, domain),engine)
     
-                tmp1 = temp[['from', 'from_label']]
-                tmp2 = temp[['to', 'to_label']]
-                tmp1['value'] = 1
-                tmp2['value'] = 1
-                tmp1.columns =['id', 'label', 'value']
-                tmp2.columns =['id', 'label', 'value']
-                distinct = pd.concat([tmp1, tmp2], axis=0)
-                
-                distinct.drop_duplicates(inplace=True)
-                distinct['value'] = 1
-                  
-                print(distinct, temp)
+            tmp1 = temp[['from', 'from_name', 'from_size']]
+            tmp2 = temp[['to', 'to_name', 'to_size']]
+            tmp1.columns =['id', 'label', 'value']
+            tmp2.columns =['id', 'label', 'value']
+            distinct = pd.concat([tmp1, tmp2], axis=0)
+            distinct.drop_duplicates(inplace=True)
+           
+            print(distinct, temp)
+            
+            G_symmetric = nx.Graph() 
+            for index, row in temp.iterrows():
+                G_symmetric.add_edge(row['from_name'], row['to_name'])
+            
+            degree_centrality = nx.degree_centrality(G_symmetric)
+            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            
+            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            
+            aa = []
+            bb = []
+            for i, v in enumerate(xx.keys()):
+                aa.append([v,xx[v]])
+    
+            for i, v in enumerate(yy.keys()):
+                bb.append([v,yy[v]])
+            
+            degree_df = pd.DataFrame(aa, columns=['label','value'])
+            bet_df = pd.DataFrame(bb, columns=['label','value'])
 
-                G_symmetric = nx.Graph() 
-                for index, row in temp.iterrows():
-                    G_symmetric.add_edge(row['from_label'], row['to_label'])
-                print('NETWORK: ', nx.info(G_symmetric))
-                degree_centrality = nx.degree_centrality(G_symmetric)
-                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-                
-                print('HMHMHMHM                            :', xx.keys())
-                aa = []
-                bb = []
-                for i, v in enumerate(xx.keys()):
-                    aa.append([v,xx[v]])
-        
-                for i, v in enumerate(yy.keys()):
-                    bb.append([v,yy[v]])
-                
-                degree_df = pd.DataFrame(aa, columns=['label','value'])
-                bet_df = pd.DataFrame(bb, columns=['label','value'])
-
-
-                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
-                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
-                                    'degree_df': degree_df.to_json(orient='records'),
-                                    'bet_df': bet_df.to_json(orient='records')})
-        
-        #print('RESULT: ',temp)
-        #return JsonResponse('ok', safe=False)
-
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                 'degree_df': degree_df.to_json(orient='records'),
+                                 'bet_df': bet_df.to_json(orient='records')})
+  
         elif node_level == 'mention':
-            if domain == '':
+            if domain != '':
+                temp = pd.read_sql_query("""
+                            with base as (
+                                    select lower(d.username) as from_user, lower(a.username) as to_user, count(*) as value
+                                    from 
+                                        df_entities a, tracker_tracker b, df_merge c, 
+                                        (
+                                            select a.id as user_id, max(username) as username 
+                                            from df_users a, tracker_tracker b 
+                                            where a.query_name = b.query_name and b.id in ({0})
+                                            group by a.id
+                                        ) d,
+                                        df_annotations e
+                                    where 
+                                        a.query_name = e.query_name 
+                                        and e.domain_id::int in ({3})
+                                        and a.tweet_id = c.tweet_tweet_id 
+                                        and a.key=c.key 
+                                        and a.query_name = c.query_name
+                                        and a.query_name = b.query_name 
+                                        and c.tweet_author_id::bigint = d.user_id::bigint
+                                        and a.category='mentions' 
+                                        and b.id in ({0})
+                                        and date(c.tweet_created_at) between '{1}' and '{2}'
+                                        and c.tweet_tweet_id = e.tweet_id
+                                        and e.key = c.key
+                                    group by
+                                        lower(d.username), lower(a.username)
+                                    order by 
+                                        count(*) desc
+                                    limit 500
+                                ),
+                                ids as (select distinct from_user as user from base union select distinct to_user as user from base),
+                                ids_rank as (select *, row_number() over (order by user) as id from ids)
+                            select 
+                                a.from_user as from_name, b.id as from, a.to_user as to_name, c.id as to, value
+                            from 
+                                base a, ids_rank b, ids_rank c
+                            where 
+                                a.from_user = b.user and a.to_user = c.user
+
+
+                        """.format(track, start_date, end_date, domain),engine)
+            else:
                 temp = pd.read_sql_query("""
                             with base as (
                                     select lower(d.username) as from_user, lower(a.username) as to_user, count(*) as value
@@ -771,7 +812,7 @@ def call_ajax(request):
                                         and a.key=c.key 
                                         and a.query_name = c.query_name
                                         and a.query_name = b.query_name 
-                                        and c.tweet_author_id = d.user_id
+                                        and c.tweet_author_id::bigint = d.user_id::bigint
                                         and a.category='mentions' 
                                         and b.id in ({0})
                                         and date(c.tweet_created_at) between '{1}' and '{2}'
@@ -784,7 +825,7 @@ def call_ajax(request):
                                 ids as (select distinct from_user as user from base union select distinct to_user as user from base),
                                 ids_rank as (select *, row_number() over (order by user) as id from ids)
                             select 
-                                a.from_user as from_label, b.id as from, a.to_user as to_label, c.id as to, value
+                                a.from_user as from_name, b.id as from, a.to_user as to_name, c.id as to, value
                             from 
                                 base a, ids_rank b, ids_rank c
                             where 
@@ -792,29 +833,97 @@ def call_ajax(request):
 
 
                         """.format(track, start_date, end_date),engine)
+
     
-                tmp1 = temp[['from', 'from_label']]
-                tmp2 = temp[['to', 'to_label']]
+            tmp1 = temp[['from', 'from_name']]
+            tmp2 = temp[['to', 'to_name']]
+            tmp1.columns =['id', 'label']
+            tmp2.columns =['id', 'label']
+            distinct = pd.concat([tmp1, tmp2], axis=0)
+            distinct.drop_duplicates(inplace=True)
+            distinct['value'] = 1
+           
+            print(distinct, temp)
             
+            G_symmetric = nx.Graph() 
+            for index, row in temp.iterrows():
+                G_symmetric.add_edge(row['from_name'], row['to_name'])
+            
+            degree_centrality = nx.degree_centrality(G_symmetric)
+            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            
+            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            
+            aa = []
+            bb = []
+            for i, v in enumerate(xx.keys()):
+                aa.append([v,xx[v]])
+    
+            for i, v in enumerate(yy.keys()):
+                bb.append([v,yy[v]])
+            
+            degree_df = pd.DataFrame(aa, columns=['label','value'])
+            bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                 'degree_df': degree_df.to_json(orient='records'),
+                                 'bet_df': bet_df.to_json(orient='records')})
+        elif node_level == 'mention_cooccurrence':
+            if domain == '':
+                temp = pd.read_sql_query("""
+                            with base as (
+                                    select distinct
+                                        a.tweet_id, lower(username) as username
+                                    from 
+                                        df_entities a, tracker_tracker b, df_merge c
+                                    where 
+                                        a.tweet_id = c.tweet_tweet_id 
+                                        and a.key=c.key 
+                                        and a.query_name = c.query_name
+                                        and a.query_name = b.query_name 
+                                        and a.category='mentions' 
+                                        and b.id in ({0})
+                                        and date(c.tweet_created_at) between '{1}' and '{2}'
+                                ),
+                                ids as (select distinct username from base),
+                                ids_rank as (select username, row_number() over (order by user) as id from ids)
+                            select 
+                                a.username as from_name, c.id as from, b.username as to_name, d.id as to, count(*) as value
+                            from 
+                                base a, base b, ids_rank c, ids_rank d
+                            where 
+                                a.tweet_id = b.tweet_id and a.username < b.username 
+                                and a.username = c.username and b.username = d.username
+                            group by
+                                a.username, c.id, b.username, d.id
+                            order by
+                                count(*) desc
+                            limit
+                                300
+
+
+                        """.format(track, start_date, end_date),engine)
+                tmp1 = temp[['from', 'from_name']]
+                tmp2 = temp[['to', 'to_name']]
                 tmp1.columns =['id', 'label']
                 tmp2.columns =['id', 'label']
                 distinct = pd.concat([tmp1, tmp2], axis=0)
- 
                 distinct.drop_duplicates(inplace=True)
                 distinct['value'] = 1
-
+            
                 print(distinct, temp)
-
+                
                 G_symmetric = nx.Graph() 
                 for index, row in temp.iterrows():
-                    G_symmetric.add_edge(row['from_label'], row['to_label'])
-                print('NETWORK: ', nx.info(G_symmetric))
+                    G_symmetric.add_edge(row['from_name'], row['to_name'])
+                
                 degree_centrality = nx.degree_centrality(G_symmetric)
                 betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+                
                 xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
                 yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
                 
-                print('HMHMHMHM                            :', xx.keys())
                 aa = []
                 bb = []
                 for i, v in enumerate(xx.keys()):
@@ -827,10 +936,72 @@ def call_ajax(request):
                 bet_df = pd.DataFrame(bb, columns=['label','value'])
 
                 return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                    'degree_centrality': dict(sorted(degree_centrality.items(), key=lambda item: item[1])),
-                                    'betweenness_centrality': dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])),
                                     'degree_df': degree_df.to_json(orient='records'),
                                     'bet_df': bet_df.to_json(orient='records')})
+
+        elif node_level == 'bigram':
+            if domain == '':
+                temp = pd.read_sql_query("""
+
+                    with base as (
+                        SELECT tweet_Tweet_id, elem, nr
+                        FROM   df_tweets_processed t, 
+                        unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)
+                    ),
+                    base2 as (
+                    select distinct a.tweet_tweet_id, concat(a.elem,' ', b.elem) as bigram,a.elem el1, b.elem el2
+                    from base a, base b
+                    where a.tweet_tweet_id = b.tweet_tweet_id and a.nr + 1 = b.nr 
+                    and a.elem <> '' and b.elem <> ''
+                    ),
+                    values as (select bigram, count(*) node_size from base2 group by bigram),
+                    ids as (select bigram, row_number() over (order by node_size desc) id from values),
+                    calcs as (
+                        select a.bigram as from_name, b.bigram as to_name, count(*) as value
+                        from base2 a, base2 b
+                        where a.tweet_tweet_id = b.tweet_tweet_id and a.bigram < b.bigram
+                        and a.el1 <> b.el1 and a.el1 <> b.el2 and a.el2 <> b.el1 and a.el2 <> b.el2
+                        group by a.bigram, b.bigram
+                        order by count(*) desc
+                        limit 1000
+                    )
+                    select from_name, to_name, value, v1.node_size as from_size, v2.node_size as to_size, i1.id as from, i2.id as to
+                    from calcs, values as v1, values as v2, ids as i1, ids as i2
+                    where calcs.from_name = v1.bigram and calcs.to_name = v2.bigram and calcs.from_name = i1.bigram and calcs.to_name = i2.bigram 
+                """, engine)
+
+                tmp1 = temp[['from', 'from_name', 'from_size']]
+                tmp2 = temp[['to', 'to_name', 'to_size']]
+                tmp1.columns =['id', 'label', 'value']
+                tmp2.columns =['id', 'label', 'value']
+                distinct = pd.concat([tmp1, tmp2], axis=0)
+                distinct.drop_duplicates(inplace=True)
+                
+                G_symmetric = nx.Graph() 
+                for index, row in temp.iterrows():
+                    G_symmetric.add_edge(row['from_name'], row['to_name'])
+                
+                degree_centrality = nx.degree_centrality(G_symmetric)
+                betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+                
+                xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+                yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+                
+                aa = []
+                bb = []
+                for i, v in enumerate(xx.keys()):
+                    aa.append([v,xx[v]])
+        
+                for i, v in enumerate(yy.keys()):
+                    bb.append([v,yy[v]])
+                
+                degree_df = pd.DataFrame(aa, columns=['label','value'])
+                bet_df = pd.DataFrame(bb, columns=['label','value'])
+
+                return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                 'degree_df': degree_df.to_json(orient='records'),
+                                                 'bet_df': bet_df.to_json(orient='records')})
+
 
     elif which == 'domain_top_entities_graph':
         temp = pd.read_sql_query("""

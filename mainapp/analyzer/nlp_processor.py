@@ -78,7 +78,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 print('DELETING DUPLICATES: SUCCESS')
             except Exception as e:
                 print('DELETING DUPLICATES: ', str(e))
-     
+            conn.close()
 
         check = pd.read_sql_query("""
                 with base as (
@@ -190,14 +190,13 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     if 'noun_phrases' in nlp:
                         noun_phrases = twt.noun_phrases
 
-                    print('EN SON SATIR: ', cleaned, proc_name, subjectivity, polarity, pos, noun_phrases)
-                    return cleaned, proc_name, subjectivity, polarity, pos, noun_phrases
+                    
+                    
+                    return cleaned, proc_name, subjectivity, polarity, str(pos), str(noun_phrases)
 
                 print('corr: ', corrections)
                 table["tweet_text"], table['processor_name'], table['subjectivity'], table['polarity'], table['pos'], table['noun_phrases'] = zip(*table.tweet_text.map(process_tw))
                 
-            
-
                 print('OK: ', remainder)
 
                 
@@ -206,7 +205,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
             else:
                 print('pass', remainder)
                 pass
-
+    engine.dispose()
     
 
 
