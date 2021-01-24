@@ -100,115 +100,118 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
         noTable = True
     
 
-    if id_string == '' and not noTable:
-        print('Skipping, no new tweets detected...')
-    else:
-        if noTable:
-            print('Creating processed_tweets table for the first time...')
-        
-        if not check.empty:
-            print('KONTROL ', check)
-            print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
-        for remainder in range(0,10):
-            table = pd.read_sql_query("""
-                with base as (
-                    select distinct
-                        a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier
-                    from
-                        tweet_main_table a, tracker_tracker b
-                    where
-                        a.query_name = b.query_name 
+    try:
+        if id_string == '' and not noTable:
+            print('Skipping, no new tweets detected...')
+        else:
+            if noTable:
+                print('Creating processed_tweets table for the first time...')
+            
+            if not check.empty:
+                print('KONTROL ', check)
+                print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
+            for remainder in range(0,10):
+                table = pd.read_sql_query("""
+                    with base as (
+                        select distinct
+                            a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier
+                        from
+                            tweet_main_table a, tracker_tracker b
+                        where
+                            a.query_name = b.query_name 
+                        
+                            and tweet_text not like 'RT @%'
+                            and b.id in ({0})
+
+                        union 
+
+                        select distinct
+                            a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier
+                        from
+                            tweet_main_table a, tracker_tracker b
+                        where
+                            a.query_name = b.query_name 
+                        
+                            and retweeted_tweet_id is not null
+                            and b.id in ({0})
+                        group by
+                            a.retweeted_tweet_id, retweeted_text, date(tweet_created_at)
+                        
+                        )
+                        select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
+                """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ), engine)
+
+                if table.shape[0] > 0:
+                    punc = False
+                    args = ''
+                    if 'remove_punc' in preproc:
+                        args = args + 'p.OPT.EMOJI, p.OPT.SMILEY' + ','
+                        punc = True
+                    if 'remove_urls' in preproc:
+                        args = args + 'p.OPT.URL' + ','
+                    if 'remove_hashtags' in preproc:
+                        args = args + 'p.OPT.HASHTAG' + ','
+                    if 'remove_mentions' in preproc:
+                        args = args + 'p.OPT.MENTION' + ','
+                    if 'remove_reserved' in preproc:
+                        args = args + 'p.OPT.RESERVED' + ','
+                    if 'remove_numbers' in preproc:
+                        args = args + 'p.OPT.NUMBER' + ','
+                    args  = 'p.set_options(' + args[0:-1] +')'
                     
-                        and tweet_text not like 'RT @%'
-                        and b.id in ({0})
+                    eval(args)
+                    print('PUNC: ', punc)
+                    def process_tw(text):
+                        cleaned = p.clean(text).lower()
+                        if punc:
+                            cleaned = cleaned.translate(str.maketrans('', '', string.punctuation))
+                        splitted = cleaned.split()
+                        resultwords  = [word for word in splitted if word.lower() not in stopwords]
+                        result = ' '.join(resultwords)
+                        result = ' ' + result + ' '
+                        
+                        for arr in corrections:
+                            #print('1: ',result)
+                            result = result.replace(' '+arr[0]+' ', ' '+arr[1]+' ')
+                            #print('2: ', result)
+                        cleaned = result
 
-                    union 
+                        twt = TextBlob(cleaned)
 
-                    select distinct
-                        a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier
-                    from
-                        tweet_main_table a, tracker_tracker b
-                    where
-                        a.query_name = b.query_name 
+                        polarity = 0
+                        subjectivity = 0
+                        pos = ''
+                        noun_phrases = ''
+
+                        if 'polarity' in nlp:
+                            polarity = twt.sentiment.polarity
+                        
+                        if 'subjectivity' in nlp:
+                            subjectivity = twt.sentiment.subjectivity
+                        
+                        if 'pos_tagging' in nlp:
+                            pos = twt.tags
+
+                        if 'noun_phrases' in nlp:
+                            noun_phrases = twt.noun_phrases
+
+                        
+                        
+                        return cleaned, proc_name, subjectivity, polarity, str(pos), str(noun_phrases)
+
+                    print('corr: ', corrections)
+                    table["tweet_text"], table['processor_name'], table['subjectivity'], table['polarity'], table['pos'], table['noun_phrases'] = zip(*table.tweet_text.map(process_tw))
                     
-                        and retweeted_tweet_id is not null
-                        and b.id in ({0})
-                    group by
-                        a.retweeted_tweet_id, retweeted_text, date(tweet_created_at)
-                    
-                    )
-                    select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
-            """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ), engine)
-
-            if table.shape[0] > 0:
-                punc = False
-                args = ''
-                if 'remove_punc' in preproc:
-                    args = args + 'p.OPT.EMOJI, p.OPT.SMILEY' + ','
-                    punc = True
-                if 'remove_urls' in preproc:
-                    args = args + 'p.OPT.URL' + ','
-                if 'remove_hashtags' in preproc:
-                    args = args + 'p.OPT.HASHTAG' + ','
-                if 'remove_mentions' in preproc:
-                    args = args + 'p.OPT.MENTION' + ','
-                if 'remove_reserved' in preproc:
-                    args = args + 'p.OPT.RESERVED' + ','
-                if 'remove_numbers' in preproc:
-                    args = args + 'p.OPT.NUMBER' + ','
-                args  = 'p.set_options(' + args[0:-1] +')'
-                
-                eval(args)
-                print('PUNC: ', punc)
-                def process_tw(text):
-                    cleaned = p.clean(text).lower()
-                    if punc:
-                        cleaned = cleaned.translate(str.maketrans('', '', string.punctuation))
-                    splitted = cleaned.split()
-                    resultwords  = [word for word in splitted if word.lower() not in stopwords]
-                    result = ' '.join(resultwords)
-                    result = ' ' + result + ' '
-                    
-                    for arr in corrections:
-                        #print('1: ',result)
-                        result = result.replace(' '+arr[0]+' ', ' '+arr[1]+' ')
-                        #print('2: ', result)
-                    cleaned = result
-
-                    twt = TextBlob(cleaned)
-
-                    polarity = 0
-                    subjectivity = 0
-                    pos = ''
-                    noun_phrases = ''
-
-                    if 'polarity' in nlp:
-                        polarity = twt.sentiment.polarity
-                    
-                    if 'subjectivity' in nlp:
-                        subjectivity = twt.sentiment.subjectivity
-                    
-                    if 'pos_tagging' in nlp:
-                        pos = twt.tags
-
-                    if 'noun_phrases' in nlp:
-                        noun_phrases = twt.noun_phrases
+                    print('OK: ', remainder)
 
                     
-                    
-                    return cleaned, proc_name, subjectivity, polarity, str(pos), str(noun_phrases)
+                    table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
 
-                print('corr: ', corrections)
-                table["tweet_text"], table['processor_name'], table['subjectivity'], table['polarity'], table['pos'], table['noun_phrases'] = zip(*table.tweet_text.map(process_tw))
-                
-                print('OK: ', remainder)
-
-                
-                table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
-
-            else:
-                print('pass', remainder)
-                pass
+                else:
+                    print('pass', remainder)
+                    pass
+    except:
+            pass
     engine.dispose()
     
 

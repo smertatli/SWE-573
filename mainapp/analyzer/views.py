@@ -26,7 +26,7 @@ settings.DATABASES['default']['PORT'],
 settings.DATABASES['default']['NAME'],
 )
 
-engine = create_engine(db_connection_url)
+
 
 # Create your views here.
 
@@ -35,6 +35,7 @@ def show_dashboard(request):
 #ast(cast(a.tweet_created_at as Date) as varchar) 
 @csrf_exempt
 def get_basic_counts(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
         select cast(cast(a.tweet_created_at as Date) as varchar)  as date_info,
         coalesce(type, 'regular') as type_info, 
@@ -43,6 +44,7 @@ def get_basic_counts(request):
         left join df_tweets_referenced b on a.key = b.key and a.tweet_tweet_id = b.tweet_id
         group by date_info, type_info
         """, engine)
+    engine.dispose()
     table = table.pivot(index="date_info", columns="type_info", values="total").reset_index()
     print(table)
     for var in table.columns:
@@ -59,6 +61,7 @@ def get_basic_counts(request):
  
 @csrf_exempt
 def get_domain_entity(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
        with base as (
             select distinct
@@ -80,6 +83,7 @@ def get_domain_entity(request):
         base3 as (select domain_name, sum(tot) as grand_tot from base group by domain_name order by grand_tot desc limit 10)
         select a.* from base2 a, base3 b where rc <= 10 and a.domain_name = b.domain_name order by a.domain_name, rc
         """, engine)
+    engine.dispose()
     print('+++++++++++++++++++++++++++++++++++++++++ AKSDPOAKSDPOAKSDPAKSOP')
     print(table)
 
@@ -102,15 +106,18 @@ def get_domain_entity(request):
     
 @csrf_exempt
 def get_domain_table(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""select distinct domain_id, domain_name, domain_desc from df_annotation_domain""", engine)
     domains = []
     for index, row in table.iterrows():
         domains.append([row['domain_id'], row['domain_name'], row['domain_desc']])
     print(domains)
+    engine.dispose()
     return JsonResponse(domains, safe=False)
 
 @csrf_exempt
 def get_domain_for_graph(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
     with base as (select distinct domain_id, domain_name from df_annotation_domain)
     select domain_name, count(*) tot from df_annotations a, base b 
@@ -118,15 +125,16 @@ def get_domain_for_graph(request):
     group by domain_name 
     order by tot desc
     """, engine)
+    
     domains = []
     for index, row in table.iterrows():
         domains.append({'domain': row['domain_name'], 'count':row['tot']})
-
+    engine.dispose()
     return JsonResponse(domains, safe=False)
 
 @csrf_exempt
 def get_entity_for_graph(request):
- 
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
     with 
     domain as (select distinct domain_id, domain_name from df_annotation_domain),
@@ -143,20 +151,24 @@ def get_entity_for_graph(request):
     for index, row in table.iterrows():
         entities.append({'entity':row['entity'], 'count':row['tot']})
     print(entities)
+    engine.dispose()
     return JsonResponse(entities, safe=False)
 
 @csrf_exempt 
 def get_entity_table(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""select distinct a.entity_id, c.domain_name, a.entity_name, a.entity_desc from df_annotation_entity a
     inner join (select distinct domain_id, entity_id from df_annotations) b on a.entity_id = b.entity_id
     left join (select distinct domain_id, domain_name, domain_desc from df_annotation_domain) c on b.domain_id = c.domain_id""", engine)
     entities = []
     for index, row in table.iterrows():
         entities.append([row['entity_id'],  row['domain_name'], row['entity_name'], row['entity_desc']])
+    engine.dispose()
     return JsonResponse(entities, safe=False) 
 
 @csrf_exempt 
 def get_user_table(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
         with 
             base as (select id, count(*) tot from df_users group by id order by count(*)),
@@ -176,17 +188,19 @@ def get_user_table(request):
     for index, row in table.iterrows():
         users.append([row['id'],  row['username'], row['rc'], row['description'], row['location'], row['name'], row['verified']])
     print(users)
+    engine.dispose()
     return JsonResponse(users, safe=False) 
 
 @csrf_exempt 
 def get_tracks(request):
+    engine = create_engine(db_connection_url)
     table = pd.read_sql_query("""
         select id, concat(query_name,'(id=',id::varchar(255),')') as query_name, query, frequency_level1, frequency_level2, fetch_size from tracker_tracker
     """, engine)
     tracks = []
     for index, row in table.iterrows():
         tracks.append([row['id'], row['query_name'],  row['query'], row['frequency_level1'], row['frequency_level2'], row['fetch_size']])
-
+    engine.dispose()
     return JsonResponse(tracks, safe=False) 
     
 
@@ -202,7 +216,7 @@ def network_analyzer(request):
 @csrf_exempt 
 def call_ajax(request):
     which = request.POST.get('which')
-
+    engine = create_engine(db_connection_url)
     if which == 'entity_domain_get_dates':
         arr = request.POST.get('data_sources')
         print(arr)
@@ -224,6 +238,7 @@ def call_ajax(request):
         dates  = []
         for dt in table['collected_date']:
             dates.append(dt)
+        engine.dispose()
         return JsonResponse({'dates': dates})
     if which == 'get_processor_dates':
         arr = request.POST.get('processors')
@@ -244,12 +259,15 @@ def call_ajax(request):
         dates  = []
         for dt in table['collected_date']:
             dates.append(dt)
+        engine.dispose()
         return JsonResponse({'dates': dates})
     elif which == 'get_domains':
         table = pd.read_sql_query("""select distinct domain_id, domain_name, domain_desc from df_annotation_domain""", engine)
         domains = []
         for index, row in table.iterrows():
             domains.append([row['domain_id'], row['domain_name'], row['domain_desc']])
+
+        engine.dispose()
         return JsonResponse(domains, safe=False)
 
     elif which == 'sentiment_analyzer':
@@ -261,6 +279,7 @@ def call_ajax(request):
         corrections = request.POST.get('corrections')
         if not tracker:
             arr = 'null'
+        engine.dispose()
         return create_preprocess_tweets_job(request.user, name, tracker, preproc, nlp, stopwords, corrections)
 
     elif which == 'processor_name_checker':
@@ -269,30 +288,32 @@ def call_ajax(request):
         table = pd.read_sql_query("""select distinct name from analyzer_processor_nlp where name = '{0}' """.format(name), engine)
         if table.shape[0] > 0:
             status = 0
-
+        engine.dispose()
         return JsonResponse({'status':status})
     
     elif which == 'get_all_stopwords_files':
         sw_names, sw_default = get_all_stopwords_files()
+        engine.dispose()
         return JsonResponse({'sw_names': sw_names,
                              'sw_default': sw_default})
 
     elif which == 'get_all_corrections_files':
         cor_names = get_all_corrections_files()
+        engine.dispose()
         return JsonResponse({'cor_names': cor_names})
 
     elif which == 'save_stopwords':
         name = request.POST.get('name')
         sw = request.POST.get('sw')
         result = save_stopword(request.user, name, sw)
-        
+        engine.dispose()
         return JsonResponse({'status': result})
 
     elif which == 'save_corrections':
         name = request.POST.get('name')
         cor = request.POST.get('cor')
         result = save_corrections(request.user, name, cor)
-        
+        engine.dispose()
         return JsonResponse({'status': result})
 
     elif which == 'get_selected_stopwords':
@@ -300,14 +321,17 @@ def call_ajax(request):
         name = request.POST.get('name')
         print('GETTİNG. ',name)
         if name == 'default_stopwords':
+            engine = create_engine(db_connection_url)
             return JsonResponse({'status':1, 'data': stopwords.words('english')})
         table = pd.read_sql_query("""select distinct file_url from analyzer_stopword_files where name ='{0}' """.format(name), engine)
         try:
             print(table['file_url'][0])
             obj = pd.read_pickle(table['file_url'][0])
             print(obj)
+            engine.dispose()
             return JsonResponse({'status': 1, 'data': obj})
         except:
+            engine.dispose()
             return JsonResponse({'status': 0, 'data': 0})
 
     elif which == 'get_selected_corrections':
@@ -322,9 +346,13 @@ def call_ajax(request):
             print('***********************************************', type(obj))
             for row in obj:
                 to_javascript = to_javascript + row[0] +' : ' + row[1] + '\n'
+            engine.dispose()
             return JsonResponse({'status': 1, 'data': to_javascript})
+            
         except:
+            engine.dispose()
             return JsonResponse({'status': 0, 'data': 0})
+        
     
     elif which == 'get_processors':
         print('GET PROCESSORS: ', request.user, request.user.id)
@@ -337,6 +365,7 @@ def call_ajax(request):
         procs = []
         for index, row in table.iterrows():
             procs.append([row['id'], row['name'],  row['tracker'], row['stopwords'], row['corrections'], row['preproc'], row['nlp'], row['status']])
+        engine.dispose()
         return JsonResponse(procs, safe=False) 
 
 
@@ -353,6 +382,7 @@ def call_ajax(request):
             where a.tweet_id = b.tweet_id and a.domain_name < b.domain_name
             group by a.domain_name, b.domain_name
          """, engine)
+        engine.dispose()
         return JsonResponse({'data':table.to_dict(orient='records')})
     
     elif which == 'get_chord_chart_data_for_domains2':
@@ -408,7 +438,7 @@ def call_ajax(request):
             from 
 	            base
          """, engine)
-
+        engine.dispose()
         return JsonResponse({'data':temp.to_dict(orient='records'), 'data2':temp2.to_dict(orient='records')})
 
     elif which == 'get_word_freqs_and_bigrams_for_check':
@@ -450,7 +480,7 @@ def call_ajax(request):
         bigram_arr = []
         for index, row in bigram.iterrows():
             bigram_arr.append([row[0], row[1], row[2]]) 
-        
+        engine.dispose()
         return JsonResponse({'word_count': word_arr, 'bigram': bigram_arr})  
        
     elif which == 'get_images':
@@ -463,6 +493,7 @@ def call_ajax(request):
                 order by count(*) desc
                 """, engine)
         print(temp.to_dict(orient='records'))
+        engine.dispose()
         return JsonResponse(temp.to_dict(orient='records'), safe=False)
 
     elif which == 'get_network_data':
@@ -581,6 +612,7 @@ def call_ajax(request):
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
 
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 
                                 'data2': distinct.to_dict(orient='records'),
                                 'degree_df': degree_df.to_json(orient='records'),
@@ -694,6 +726,7 @@ def call_ajax(request):
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
 
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                  'degree_df': degree_df.to_json(orient='records'),
                                  'bet_df': bet_df.to_json(orient='records')})
@@ -801,7 +834,7 @@ def call_ajax(request):
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
-
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                  'degree_df': degree_df.to_json(orient='records'),
                                  'bet_df': bet_df.to_json(orient='records')})
@@ -920,7 +953,7 @@ def call_ajax(request):
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
-
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                  'degree_df': degree_df.to_json(orient='records'),
                                  'bet_df': bet_df.to_json(orient='records')})
@@ -1028,7 +1061,7 @@ def call_ajax(request):
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
-
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                 'degree_df': degree_df.to_json(orient='records'),
                                 'bet_df': bet_df.to_json(orient='records')})
@@ -1141,13 +1174,14 @@ def call_ajax(request):
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
-
+            engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                                 'degree_df': degree_df.to_json(orient='records'),
                                                 'bet_df': bet_df.to_json(orient='records')})
 
 
     elif which == 'domain_top_entities_graph':
+        engine = create_engine(db_connection_url)
         temp = pd.read_sql_query("""
                 with base as (
                     select b.domain_name, c.entity_name, count(*) total, count(*) over (partition by domain_name) as domain_tot
@@ -1176,8 +1210,10 @@ def call_ajax(request):
             for index, row in entities.iterrows():
                 the_dict['children'].append({ 'name': row['entity_name'], 'value': row['total'] })
             arr.append(the_dict)
+        engine.dispose()
         return JsonResponse(arr, safe=False)
     elif which == 'get_comparisons_metrics':
+        engine = create_engine(db_connection_url)
         source1 = request.POST.get('source1')
         source2 = request.POST.get('source2')
         start_date1 = request.POST.get('start_date1')
@@ -1228,7 +1264,7 @@ def call_ajax(request):
                         from all_data where rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
                     
                     """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, 'username' if level=='mentions' else 'tag'), engine)
-            
+            engine.dispose()
             return JsonResponse(temp.to_dict(orient='row'), safe=False)
         elif level == 'domain':
             temp = pd.read_sql_query("""
@@ -1273,18 +1309,19 @@ def call_ajax(request):
                         from all_data where rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
                     
                     """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, 'username' if level=='mentions' else 'tag'), engine)
-            
+            engine.dispose()
             return JsonResponse(temp.to_dict(orient='row'), safe=False)
     
     elif which == 'cancel_processor':
         ids = request.POST.get('selected')
+        conn = engine.connect()
         try:
-            conn = engine.connect()
             print('DELETING ', ids)
             conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(ids))
+            conn.close()
             return JsonResponse({'result':'OK'})
         except Exception as e:
-            
+            conn.close()
             return JsonResponse({'result':'NOK'})
         
 
@@ -1292,6 +1329,7 @@ def call_ajax(request):
 
 def save_stopword(user, name, sw):
     stopwords_file = '/usr/src/mainapp/' + name + '.pckl'
+    engine = create_engine(db_connection_url)
     try:
         record = {}
         stopwords = sw.split('\n')
@@ -1305,8 +1343,10 @@ def save_stopword(user, name, sw):
         df = pd.DataFrame(record, index=[0])
         print(df)
         df.to_sql('analyzer_stopword_files', engine, if_exists='append', index=False)
+        engine.dispose()
         return 1
     except Exception as e:
+        engine.dispose()
         print(e)
         return 0
 
@@ -1314,6 +1354,7 @@ def save_stopword(user, name, sw):
 def save_corrections(user, name, cor):
     cor_file = '/usr/src/mainapp/' + name + '.pckl'
     print('***********************************************', cor, ast.literal_eval(cor), type(ast.literal_eval(cor)))
+    engine = create_engine(db_connection_url)
     try:
         record = {}
         corrections = ast.literal_eval(cor)
@@ -1326,8 +1367,10 @@ def save_corrections(user, name, cor):
         df = pd.DataFrame(record, index=[0])
         print(df)
         df.to_sql('analyzer_corrections_files', engine, if_exists='append', index=False)
+        engine.dispose()
         return 1
     except Exception as e:
+        engine.dispose()
         print(e)
         return 0
     
@@ -1335,6 +1378,7 @@ def save_corrections(user, name, cor):
 
 def get_all_stopwords_files():
     files = ['default_stopwords']
+    engine = create_engine(db_connection_url)
     try:
         
         table = pd.read_sql_query("""select distinct name from analyzer_stopword_files """, engine)
@@ -1343,18 +1387,22 @@ def get_all_stopwords_files():
     except:
         print('///////////////////////////////////////////////// stopwords table not exist!')
     sw_default = stopwords.words('english')
+    engine.dispose()
     return(files, sw_default)
 
 
 def get_all_corrections_files():
     files = []
+    engine = create_engine(db_connection_url)
     try:
         
         table = pd.read_sql_query("""select distinct name from analyzer_corrections_files """, engine)
         for cor in table['name']:
             files.append(cor)
+
     except:
         print('///////////////////////////////////////////////// stopwords table not exist!')
+    engine.dispose()
     return(files)
         
 

@@ -384,6 +384,15 @@
       series5.yAxis = valueAxis2;
       series5.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
 
+      var series6 = chart.series.push(new am4charts.LineSeries());
+      series6.dataFields.valueY = "mixed_perc";
+      series6.dataFields.categoryX = "query_name";
+      series6.name = "mixed";
+      series6.strokeWidth = 2;
+      series6.tensionX = 0.7;
+      series6.yAxis = valueAxis2;
+      series6.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
 
 
       
