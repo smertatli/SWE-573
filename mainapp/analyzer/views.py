@@ -247,11 +247,11 @@ def call_ajax(request):
             arr = 'null'
         table = pd.read_sql_query("""
             select distinct
-                date(c.tweet_created_at) as collected_date
+                date(a.created_at) as collected_date
             from 
-                df_tweets_processed a, analyzer_processor_nlp b, df_merge c
+                df_tweets_processed a, analyzer_processor_nlp b
             where 
-                a.processor_name = b.name and b.id in ({0}) and a.tweet_tweet_id = c.tweet_tweet_id
+                a.processor_name = b.name and b.id in ({0}) 
             order by
                 1 
             """.format(arr), engine)
@@ -448,7 +448,7 @@ def call_ajax(request):
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT b.name, elem,count(distinct tweet_Tweet_id) as freq
                 FROM   df_tweets_processed t, base b,
-                unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)
+                unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)  
                 where t.processor_name = b.name and elem > ''
                 group by b.name, elem
                 order by 3 desc
@@ -582,41 +582,14 @@ def call_ajax(request):
                     limit {4}
                 """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ), engine)
 
-            tmp1 = temp[['from', 'from_name', 'from_size']]
-            tmp2 = temp[['to', 'to_name', 'to_size']]
-            tmp1.columns =['id', 'label', 'value']
-            tmp2.columns =['id', 'label', 'value']
-            distinct = pd.concat([tmp1, tmp2], axis=0)
-            distinct.drop_duplicates(inplace=True)
-        
-            print(distinct, temp)
-            
-            G_symmetric = nx.Graph() 
-            for index, row in temp.iterrows():
-                G_symmetric.add_edge(row['from_name'], row['to_name'])
-            
-            degree_centrality = nx.degree_centrality(G_symmetric)
-            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-            
-            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-            
-            aa = []
-            bb = []
-            for i, v in enumerate(xx.keys()):
-                aa.append([v,xx[v]])
-    
-            for i, v in enumerate(yy.keys()):
-                bb.append([v,yy[v]])
-            
-            degree_df = pd.DataFrame(aa, columns=['label','value'])
-            bet_df = pd.DataFrame(bb, columns=['label','value'])
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
 
             engine.dispose()
-            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 
-                                'data2': distinct.to_dict(orient='records'),
-                                'degree_df': degree_df.to_json(orient='records'),
-                                'bet_df': bet_df.to_json(orient='records')})
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
 
 
         elif node_level == 'entity':
@@ -696,40 +669,14 @@ def call_ajax(request):
 
 
 
-            tmp1 = temp[['from', 'from_name', 'from_size']]
-            tmp2 = temp[['to', 'to_name', 'to_size']]
-            tmp1.columns =['id', 'label', 'value']
-            tmp2.columns =['id', 'label', 'value']
-            distinct = pd.concat([tmp1, tmp2], axis=0)
-            distinct.drop_duplicates(inplace=True)
-           
-            print(distinct, temp)
-            
-            G_symmetric = nx.Graph() 
-            for index, row in temp.iterrows():
-                G_symmetric.add_edge(row['from_name'], row['to_name'])
-            
-            degree_centrality = nx.degree_centrality(G_symmetric)
-            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-            
-            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-            
-            aa = []
-            bb = []
-            for i, v in enumerate(xx.keys()):
-                aa.append([v,xx[v]])
-    
-            for i, v in enumerate(yy.keys()):
-                bb.append([v,yy[v]])
-            
-            degree_df = pd.DataFrame(aa, columns=['label','value'])
-            bet_df = pd.DataFrame(bb, columns=['label','value'])
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
 
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                 'degree_df': degree_df.to_json(orient='records'),
-                                 'bet_df': bet_df.to_json(orient='records')})
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
         elif node_level == 'hashtag':
             if domain == '':
                 temp = pd.read_sql_query("""
@@ -805,39 +752,14 @@ def call_ajax(request):
                             limit {4}
                         """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ),engine)
     
-            tmp1 = temp[['from', 'from_name', 'from_size']]
-            tmp2 = temp[['to', 'to_name', 'to_size']]
-            tmp1.columns =['id', 'label', 'value']
-            tmp2.columns =['id', 'label', 'value']
-            distinct = pd.concat([tmp1, tmp2], axis=0)
-            distinct.drop_duplicates(inplace=True)
-           
-            print(distinct, temp)
-            
-            G_symmetric = nx.Graph() 
-            for index, row in temp.iterrows():
-                G_symmetric.add_edge(row['from_name'], row['to_name'])
-            
-            degree_centrality = nx.degree_centrality(G_symmetric)
-            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-            
-            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-            
-            aa = []
-            bb = []
-            for i, v in enumerate(xx.keys()):
-                aa.append([v,xx[v]])
-    
-            for i, v in enumerate(yy.keys()):
-                bb.append([v,yy[v]])
-            
-            degree_df = pd.DataFrame(aa, columns=['label','value'])
-            bet_df = pd.DataFrame(bb, columns=['label','value'])
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
+
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                 'degree_df': degree_df.to_json(orient='records'),
-                                 'bet_df': bet_df.to_json(orient='records')})
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
   
         elif node_level == 'mention':
             if domain != '':
@@ -939,24 +861,41 @@ def call_ajax(request):
             
             degree_centrality = nx.degree_centrality(G_symmetric)
             betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            eigen_centrality = nx.eigenvector_centrality(G_symmetric, max_iter=500)
+            clustering = nx.clustering(G_symmetric)
             
             xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
             yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            ie = dict(sorted(eigen_centrality.items(), key=lambda item: item[1])) 
+            cl = dict(sorted(clustering.items(), key=lambda item: item[1])) 
             
             aa = []
             bb = []
+            cc = []
+            dd = []
+
             for i, v in enumerate(xx.keys()):
                 aa.append([v,xx[v]])
     
             for i, v in enumerate(yy.keys()):
                 bb.append([v,yy[v]])
+
+            for i, v in enumerate(ie.keys()):
+                cc.append([v,ie[v]])
+
+            for i, v in enumerate(cl.keys()):
+                dd.append([v,cl[v]])
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
+            eigen = pd.DataFrame(cc, columns=['label','value'])
+            clustering = pd.DataFrame(dd, columns=['label','value'])
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                 'degree_df': degree_df.to_json(orient='records'),
-                                 'bet_df': bet_df.to_json(orient='records')})
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
         elif node_level == 'mention_cooccurrence':
             if domain == '':
                 temp = pd.read_sql_query("""
@@ -1047,24 +986,41 @@ def call_ajax(request):
             
             degree_centrality = nx.degree_centrality(G_symmetric)
             betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+            eigen_centrality = nx.eigenvector_centrality(G_symmetric, max_iter=500)
+            clustering = nx.clustering(G_symmetric)
             
             xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
             yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+            ie = dict(sorted(eigen_centrality.items(), key=lambda item: item[1])) 
+            cl = dict(sorted(clustering.items(), key=lambda item: item[1])) 
             
             aa = []
             bb = []
+            cc = []
+            dd = []
+
             for i, v in enumerate(xx.keys()):
                 aa.append([v,xx[v]])
     
             for i, v in enumerate(yy.keys()):
                 bb.append([v,yy[v]])
+
+            for i, v in enumerate(ie.keys()):
+                cc.append([v,ie[v]])
+
+            for i, v in enumerate(cl.keys()):
+                dd.append([v,cl[v]])
             
             degree_df = pd.DataFrame(aa, columns=['label','value'])
             bet_df = pd.DataFrame(bb, columns=['label','value'])
+            eigen = pd.DataFrame(cc, columns=['label','value'])
+            clustering = pd.DataFrame(dd, columns=['label','value'])
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
-                                'degree_df': degree_df.to_json(orient='records'),
-                                'bet_df': bet_df.to_json(orient='records')})
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
 
         elif node_level == 'bigram':
             if domain == '':
@@ -1147,37 +1103,13 @@ def call_ajax(request):
                     where calcs.from_name = v1.bigram and calcs.to_name = v2.bigram and calcs.from_name = i1.bigram and calcs.to_name = i2.bigram 
 
                 """.format(processor, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ), engine)
-            tmp1 = temp[['from', 'from_name', 'from_size']]
-            tmp2 = temp[['to', 'to_name', 'to_size']]
-            tmp1.columns =['id', 'label', 'value']
-            tmp2.columns =['id', 'label', 'value']
-            distinct = pd.concat([tmp1, tmp2], axis=0)
-            distinct.drop_duplicates(inplace=True)
-            
-            G_symmetric = nx.Graph() 
-            for index, row in temp.iterrows():
-                G_symmetric.add_edge(row['from_name'], row['to_name'])
-            
-            degree_centrality = nx.degree_centrality(G_symmetric)
-            betweenness_centrality = nx.betweenness_centrality(G_symmetric)
-            
-            xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
-            yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
-            
-            aa = []
-            bb = []
-            for i, v in enumerate(xx.keys()):
-                aa.append([v,xx[v]])
-    
-            for i, v in enumerate(yy.keys()):
-                bb.append([v,yy[v]])
-            
-            degree_df = pd.DataFrame(aa, columns=['label','value'])
-            bet_df = pd.DataFrame(bb, columns=['label','value'])
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
                                                 'degree_df': degree_df.to_json(orient='records'),
-                                                'bet_df': bet_df.to_json(orient='records')})
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
 
 
     elif which == 'domain_top_entities_graph':
@@ -1221,96 +1153,290 @@ def call_ajax(request):
         end_date1 = request.POST.get('end_date1')
         end_date2 = request.POST.get('end_date2')
         level = request.POST.get('level')
+        
         if level == 'mentions' or level == 'hashtags':
+            print('OOOOOOOOOO')
             temp = pd.read_sql_query("""
-                    with periods as (
-                        select distinct tweet_tweet_id, case when (b.id in ({0}) and created_at between '{1}' and '{2}') then 0 else 1 end as period, 
-                        polarity, multiplier
-                        
-                        from df_tweets_processed a, analyzer_processor_nlp b
-                        where 
-                            ((b.id in ({0}) and created_at between '{1}' and '{2}') or (b.id in ({3}) and created_at between '{4}' and '{5}'))
-                            and a.processor_name = b.name
-                    ),
-                    tags as (
-                        select distinct a.*, lower({7}) as tag
-                        from periods a, df_entities b
-                        where a.tweet_tweet_id = b.tweet_id and b.category = '{6}' 
-                    ),
-                    agg as (
-                        select tag, avg(period) as freq, count(distinct tweet_tweet_id) as total, sum(polarity*multiplier)/sum(multiplier) as polarity_avg,
-                        avg(case when period = 0 then polarity end) polarity_avg_period1,
-                        avg(case when period = 1 then polarity end) polarity_avg_period2
-                        from tags
-                        group by tag
-                    ),
-                    all_data as (
+                    with period1 as (
                         select 
-                            tag, 
-                            freq,
-                            total,
-                            case when polarity_avg_period1 is null then 0 else polarity_avg_period1 end as polarity_avg_period1,
-                            case when polarity_avg_period2 is null then 0 else polarity_avg_period2 end as polarity_avg_period2,
-                            (total*(1-freq))::int total_period1, 
-                            row_number() over (order by case when total*(1-freq) > 0 then total*(1-freq) else 0 end desc) as rank_period1, 
-                            (total*freq)::int total_period2, 
-                            row_number() over (order by case when total*freq > 0 then total*freq else 0 end desc) as rank_period2, 
-                            row_number() over (order by case when freq = 0 then total*(1-freq) else 0 end desc) as rank_period1_only, 
-                            row_number() over (order by case when 1-freq = 0 then total*freq else 0 end desc) as rank_period2_only
-                        from agg  
-                    ) 
-                    
-                        select *
-                        from all_data where rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
-                    
-                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, 'username' if level=='mentions' else 'tag'), engine)
-            engine.dispose()
+                            lower(elem) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b, 
+                            tweet_main_table d,
+                            unnest(string_to_array(d.{6}, '||')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({0}) and date(v.created_at) between '{1}' and '{2}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(elem)
+                    ),
+                    period2 as (
+                        select 
+                            lower(elem) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b, 
+                            tweet_main_table d,
+                            unnest(string_to_array(d.{6}, '||')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({3}) and date(v.created_at) between '{4}' and '{5}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(elem)
+                    ),
+                    comp as (
+                    select 
+                        coalesce(a.tag, b.tag) as tag,
+                        row_number() over (order by a.total desc nulls last) as rank_period1,
+                        row_number() over (order by b.total desc nulls last) as rank_period2,
+                        row_number() over (order by case when b.total is null then a.total end desc nulls last) as rank_period1_only,
+                        row_number() over (order by case when a.total is null then b.total end desc nulls last) as rank_period2_only,
+                        coalesce(a.total,0) as total_period1,
+                        coalesce(b.total,0) as total_period2,
+                        coalesce(a.avg_polarity,0) as polarity_avg_period1,
+                        coalesce(b.avg_polarity,0) as polarity_avg_period2,
+                        coalesce(a.avg_subjectivity,0) as subjectivity_avg_period1,
+                        coalesce(b.avg_subjectivity,0) as subjectivity_avg_period2
+                    from 
+                        period1 a 
+                        full join 
+                        period2 b on a.tag = b.tag
+
+                    )
+                    select 
+                        * 
+                    from 
+                        comp 
+                    where 
+                        rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
+    
+                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level), engine)
             return JsonResponse(temp.to_dict(orient='row'), safe=False)
-        elif level == 'domain':
+        elif level == 'domains' or level == 'entities':
             temp = pd.read_sql_query("""
-                    with periods as (
-                        select distinct tweet_tweet_id, case when (b.id in ({0}) and created_at between '{1}' and '{2}') then 0 else 1 end as period, 
-                        polarity, multiplier
-                        
-                        from df_tweets_processed a, analyzer_processor_nlp b
-                        where 
-                            ((b.id in ({0}) and created_at between '{1}' and '{2}') or (b.id in ({3}) and created_at between '{4}' and '{5}'))
-                            and a.processor_name = b.name
-                    ),
-                    tags as (
-                        select distinct domain_name, a.period, a.polarity, a.multiplier, lower({7}) as tag
-                        from periods a, df_annotations b, (select domain_id, max(domain_name) as domain_name from df_annotation_domain group by domain_id) c
-                        where a.tweet_tweet_id = b.tweet_id and b.domain_id = c.domain_id
-                    ),
-                    agg as (
-                        select tag, avg(period) as freq, count(distinct tweet_tweet_id) as total, sum(polarity*multiplier)/sum(multiplier) as polarity_avg,
-                        avg(case when period = 0 then polarity end) polarity_avg_period1,
-                        avg(case when period = 1 then polarity end) polarity_avg_period2
-                        from tags
-                        group by tag
-                    ),
-                    all_data as (
+                with period1 as (
                         select 
-                            tag, 
-                            freq,
-                            total,
-                            case when polarity_avg_period1 is null then 0 else polarity_avg_period1 end as polarity_avg_period1,
-                            case when polarity_avg_period2 is null then 0 else polarity_avg_period2 end as polarity_avg_period2,
-                            (total*(1-freq))::int total_period1, 
-                            row_number() over (order by case when total*(1-freq) > 0 then total*(1-freq) else 0 end desc) as rank_period1, 
-                            (total*freq)::int total_period2, 
-                            row_number() over (order by case when total*freq > 0 then total*freq else 0 end desc) as rank_period2, 
-                            row_number() over (order by case when freq = 0 then total*(1-freq) else 0 end desc) as rank_period1_only, 
-                            row_number() over (order by case when 1-freq = 0 then total*freq else 0 end desc) as rank_period2_only
-                        from agg  
-                    ) 
+                            lower(split_part(elem,'=',{7})) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b, 
+                            tweet_main_table d,
+                            unnest(string_to_array(d.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({0}) and date(v.created_at) between '{1}' and '{2}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(split_part(elem,'=',{7}))
+                    ),
+                    period2 as (
+                        select 
+                            lower(split_part(elem,'=',{7})) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b, 
+                            tweet_main_table d,
+                            unnest(string_to_array(d.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({3}) and date(v.created_at) between '{4}' and '{5}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(split_part(elem,'=',{7}))
+                    ),
+                    comp as (
+                    select 
+                        coalesce(a.tag, b.tag) as tag,
+                        row_number() over (order by a.total desc nulls last) as rank_period1,
+                        row_number() over (order by b.total desc nulls last) as rank_period2,
+                        row_number() over (order by case when b.total is null then a.total end desc nulls last) as rank_period1_only,
+                        row_number() over (order by case when a.total is null then b.total end desc nulls last) as rank_period2_only,
+                        coalesce(a.total,0) as total_period1,
+                        coalesce(b.total,0) as total_period2,
+                        coalesce(a.avg_polarity,0) as polarity_avg_period1,
+                        coalesce(b.avg_polarity,0) as polarity_avg_period2,
+                        coalesce(a.avg_subjectivity,0) as subjectivity_avg_period1,
+                        coalesce(b.avg_subjectivity,0) as subjectivity_avg_period2
+                    from 
+                        period1 a 
+                        full join 
+                        period2 b on a.tag = b.tag
+
+                    )
+                    select 
+                        * 
+                    from 
+                        comp 
+                    where 
+                        rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
+                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, '1' if level =='domains' else '2'), engine)
+        elif level == 'ref_username':
+            temp = pd.read_sql_query("""
+                with period1 as (
+                        select distinct
+                            lower(ref_username) as tag,
+                            avg(polarity) as avg_polarity,
+                            avg(subjectivity) as avg_subjectivity,
+                            max(tweet_retweet_count) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b,
+                            tweet_main_table d
+                        where 
+                            v.tweet_tweet_id = d.retweeted_tweet_id and
+                            ((b.id in ({0}) and date(v.created_at) between '{1}' and '{2}'))
+                            and v.processor_name = b.name
+                            and type ='retweeted'
+                        group by
+                            lower(ref_username) 
                     
-                        select *
-                        from all_data where rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
-                    
-                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, 'username' if level=='mentions' else 'tag'), engine)
-            engine.dispose()
-            return JsonResponse(temp.to_dict(orient='row'), safe=False)
+                    ),
+                    period2 as (
+                        select distinct
+                            lower(ref_username) as tag,
+                            avg(polarity) as avg_polarity,
+                            avg(subjectivity) as avg_subjectivity,
+                            max(tweet_retweet_count) as total
+                        from 
+                            tweet_main_table d,
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b 
+                        where 
+                            v.tweet_tweet_id = d.retweeted_tweet_id and
+                            ((b.id in ({3}) and date(v.created_at) between '{4}' and '{5}'))
+                            and v.processor_name = b.name
+                            and type ='retweeted'
+                        group by
+                            lower(ref_username) 
+                    ),
+                    comp as (
+                    select 
+                        coalesce(a.tag, b.tag) as tag,
+                        row_number() over (order by a.total desc nulls last) as rank_period1,
+                        row_number() over (order by b.total desc nulls last) as rank_period2,
+                        row_number() over (order by case when b.total is null then a.total end desc nulls last) as rank_period1_only,
+                        row_number() over (order by case when a.total is null then b.total end desc nulls last) as rank_period2_only,
+                        coalesce(a.total,0) as total_period1,
+                        coalesce(b.total,0) as total_period2,
+                        coalesce(a.avg_polarity,0) as polarity_avg_period1,
+                        coalesce(b.avg_polarity,0) as polarity_avg_period2,
+                        coalesce(a.avg_subjectivity,0) as subjectivity_avg_period1,
+                        coalesce(b.avg_subjectivity,0) as subjectivity_avg_period2
+                    from 
+                        period1 a 
+                        full join 
+                        period2 b on a.tag = b.tag
+
+                    )
+                    select 
+                        * 
+                    from 
+                        comp 
+                    where 
+                        rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
+                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2), engine)
+        elif level in ['annotation_persons','annotation_org','annotation_product','annotation_place','annotation_other']:
+            temp = pd.read_sql_query("""
+                with period1 as (
+                        select 
+                            lower(elem) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b, 
+                            tweet_main_table d,
+                            unnest(string_to_array(d.{6}, '||')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({0}) and date(v.created_at) between '{1}' and '{2}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(elem)
+                    ),
+                    period2 as (
+                        select 
+                            lower(elem) as tag,
+                            sum(polarity*multiplier) / sum(multiplier) as avg_polarity,
+                            sum(subjectivity*multiplier) / sum(multiplier) as avg_subjectivity,
+                            sum(multiplier) as total
+                        from 
+                            tweet_main_table d,
+                            df_tweets_processed v, 
+                            analyzer_processor_nlp b ,
+                            unnest(string_to_array(d.{6}, '||')) WITH ORDINALITY a(elem, nr) 
+                        where 
+                            v.tweet_tweet_id = d.tweet_tweet_id and
+                            ((b.id in ({3}) and date(v.created_at) between '{4}' and '{5}'))
+                            and v.processor_name = b.name
+                        group by
+                            lower(elem)
+                    ),
+                    comp as (
+                    select 
+                        coalesce(a.tag, b.tag) as tag,
+                        row_number() over (order by a.total desc nulls last) as rank_period1,
+                        row_number() over (order by b.total desc nulls last) as rank_period2,
+                        row_number() over (order by case when b.total is null then a.total end desc nulls last) as rank_period1_only,
+                        row_number() over (order by case when a.total is null then b.total end desc nulls last) as rank_period2_only,
+                        coalesce(a.total,0) as total_period1,
+                        coalesce(b.total,0) as total_period2,
+                        coalesce(a.avg_polarity,0) as polarity_avg_period1,
+                        coalesce(b.avg_polarity,0) as polarity_avg_period2,
+                        coalesce(a.avg_subjectivity,0) as subjectivity_avg_period1,
+                        coalesce(b.avg_subjectivity,0) as subjectivity_avg_period2
+                    from 
+                        period1 a 
+                        full join 
+                        period2 b on a.tag = b.tag
+
+                    )
+                    select 
+                        * 
+                    from 
+                        comp 
+                    where 
+                        rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
+                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level), engine)
+        elif level == 'word':
+            temp = pd.read_sql_query("""
+     
+                    (SELECT 'period1' as period, elem as tag,count(distinct tweet_Tweet_id) as count
+                    FROM   df_tweets_processed t, analyzer_processor_nlp b,
+                    unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)  
+                    where t.processor_name = b.name and elem > '' and b.id in ({0}) and date(created_at) between '{1}' and '{2}'
+                    group by elem
+                    order by count(distinct tweet_Tweet_id) desc
+                    limit 250)
+                    union all
+                    (SELECT 'period2' as period, elem as tag,count(distinct tweet_Tweet_id) as count
+                    FROM   df_tweets_processed t, analyzer_processor_nlp b,
+                    unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)  
+                    where t.processor_name = b.name and elem > '' and b.id in ({3}) and date(created_at) between '{4}' and '{5}'
+                    group by elem
+                    order by count(distinct tweet_Tweet_id) desc
+                    limit 250)
+                """.format(source1, start_date1, end_date1,source2, start_date2, end_date2), engine)
+        engine.dispose()
+ 
+        return JsonResponse(temp.to_dict(orient='row'), safe=False)
+        
     
     elif which == 'cancel_processor':
         ids = request.POST.get('selected')
@@ -1323,7 +1449,7 @@ def call_ajax(request):
         except Exception as e:
             conn.close()
             return JsonResponse({'result':'NOK'})
-        
+    
 
 
 
@@ -1461,3 +1587,52 @@ def tweet_media_analyzer(request):
 
 def comparisor(request):
     return render(request, 'analyzer/comparisor.html')
+
+
+def get_network_metrics(temp):
+    tmp1 = temp[['from', 'from_name', 'from_size']]
+    tmp2 = temp[['to', 'to_name', 'to_size']]
+    tmp1.columns =['id', 'label', 'value']
+    tmp2.columns =['id', 'label', 'value']
+    distinct = pd.concat([tmp1, tmp2], axis=0)
+    distinct.drop_duplicates(inplace=True)
+
+    print(distinct, temp)
+
+    G_symmetric = nx.Graph() 
+    for index, row in temp.iterrows():
+        G_symmetric.add_edge(row['from_name'], row['to_name'])
+
+    degree_centrality = nx.degree_centrality(G_symmetric)
+    betweenness_centrality = nx.betweenness_centrality(G_symmetric)
+    eigen_centrality = nx.eigenvector_centrality(G_symmetric, max_iter=500)
+    clustering = nx.clustering(G_symmetric)
+
+    xx = dict(sorted(degree_centrality.items(), key=lambda item: item[1])) 
+    yy = dict(sorted(betweenness_centrality.items(), key=lambda item: item[1])) 
+    ie = dict(sorted(eigen_centrality.items(), key=lambda item: item[1])) 
+    cl = dict(sorted(clustering.items(), key=lambda item: item[1])) 
+
+    aa = []
+    bb = []
+    cc = []
+    dd = []
+
+    for i, v in enumerate(xx.keys()):
+        aa.append([v,xx[v]])
+
+    for i, v in enumerate(yy.keys()):
+        bb.append([v,yy[v]])
+
+    for i, v in enumerate(ie.keys()):
+        cc.append([v,ie[v]])
+
+    for i, v in enumerate(cl.keys()):
+        dd.append([v,cl[v]])
+
+    degree_df = pd.DataFrame(aa, columns=['label','value'])
+    bet_df = pd.DataFrame(bb, columns=['label','value'])
+    eigen = pd.DataFrame(cc, columns=['label','value'])
+    clustering = pd.DataFrame(dd, columns=['label','value'])
+
+    return distinct, degree_df, bet_df, eigen, clustering

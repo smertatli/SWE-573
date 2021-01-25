@@ -40,17 +40,17 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
         if stopwords_file == 'default_stopwords':
             stopwords = stopwords.words('english')
         else:
-            stopwords = pd.read_pickle('/usr/src/mainapp/' + stopwords_file + '.pckl' )
-        print('SUCCESSFUL OPEN STOPWORDS', '/usr/src/mainapp/' + stopwords_file + '.pckl')
+            stopwords = pd.read_pickle('/tmp/' + stopwords_file + '.pckl' )
+        print('SUCCESSFUL OPEN STOPWORDS', '/tmp/' + stopwords_file + '.pckl')
     except Exception as e:
         stopwords = []
-        print('CANNOT OPEN STOPWORDS', '/usr/src/mainapp/' + stopwords_file + '.pckl', str(e))
+        print('CANNOT OPEN STOPWORDS', '/tmp/' + stopwords_file + '.pckl', str(e))
     try:
-        corrections = pd.read_pickle('/usr/src/mainapp/' + corrections_file + '.pckl' )
-        print('SUCCESSFUL OPEN CORRECTİONS', '/usr/src/mainapp/' + corrections_file + '.pckl', corrections)
+        corrections = pd.read_pickle('/tmp/' + corrections_file + '.pckl' )
+        print('SUCCESSFUL OPEN CORRECTİONS', '/tmp/' + corrections_file + '.pckl', corrections)
     except:
         corrections = []
-        print('CANNOT OPEN CORRECTİONS', '/usr/src/mainapp/' + corrections_file + '.pckl')
+        print('CANNOT OPEN CORRECTİONS', '/tmp/' + corrections_file + '.pckl')
 
     id_string = ''
     noTable = False

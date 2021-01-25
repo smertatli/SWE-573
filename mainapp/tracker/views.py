@@ -145,7 +145,7 @@ def create_task(name, query, frequency_level1, frequency_level2, fetch_size, dat
                     manual = manual,
                     schedule_type = schedule_type,
                     
-                    minutes = 1,
+                    minutes = frequency_level2,
                     repeats = repeat
                     )
             status = True

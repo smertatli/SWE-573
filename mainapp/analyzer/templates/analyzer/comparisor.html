@@ -110,6 +110,33 @@
                         <label class="radio radio-outline-primary">
                             <input type="radio" name="comparison_level" value='mentions'><span>Mention</span><span class="checkmark"></span>
                         </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='domains'><span>Domain</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='entities'><span>Entity</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='ref_username'><span>User</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='annotation_persons'><span>Annotation:Person</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='annotation_product'><span>Annotation:Product</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='annotation_place'><span>Annotation:Place</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='annotation_org'><span>Annotation:Organization</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='annotation_other'><span>Annotation:Other</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-outline-primary">
+                            <input type="radio" name="comparison_level" value='word'><span>Word</span><span class="checkmark"></span>
+                        </label>
                        
                     </div>
                 </div>
@@ -379,10 +406,39 @@
                 }).responseJSON;
             
                 global_data = comparisor_data
-                alert(comparisor_data.length)
-                draw_tag(order_by=1, 'chartdiv1')
-                draw_tag(order_by=2, 'chartdiv2')
-                draw_tag(order_by=3, 'chartdiv3')
+                g1 = document.getElementById('graph1')
+                g2 = document.getElementById('graph2')
+                g3 = document.getElementById('graph3')
+                g4 = document.getElementById('graph4')
+                g5 = document.getElementById('graph5')
+                g6 = document.getElementById('graph6')
+
+                if(comparison_level=='word'){
+                    g1.style.display = "none";
+                    g2.style.display = "none";
+                    g3.style.display = "none";
+                    g4.style.display = "none";
+                    g5.style.display = "block";
+                    g6.style.display = "block";
+                    draw_wordcloud('chartdiv5', 'period1')
+                    draw_wordcloud('chartdiv6', 'period2')
+
+                } else {
+                    g1.style.display = "block";
+                    g2.style.display = "block";
+                    g3.style.display = "block";
+                    g4.style.display = "block";
+                    g5.style.display = "none";
+                    g6.style.display = "none";
+                    draw_tag(order_by=1, 'chartdiv1')
+                    draw_tag(order_by=2, 'chartdiv2')
+                    draw_tag(order_by=3, 'chartdiv3')
+                    draw_tag(order_by=3, 'chartdiv4')
+
+                }
+                
+                
+     
             
 
         }
@@ -421,6 +477,31 @@
     background: rgb(237, 237, 237);
     }
 
+    #chartdiv4 {
+        width: 100%;
+      height: 600px;
+    position: relative;
+    background: rgb(237, 237, 237);
+    }
+
+
+    #chartdiv5 {
+        width: 100%;
+      height: 600px;
+    position: relative;
+    background: rgb(237, 237, 237);
+    }
+
+
+    #chartdiv6 {
+        width: 100%;
+      height: 600px;
+    position: relative;
+    background: rgb(237, 237, 237);
+    }
+
+   
+
     #divcolor2 {
         background: rgb(237, 237, 237);
     }
@@ -437,6 +518,10 @@
     <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
     
+ 
+    <script src="https://cdn.amcharts.com/lib/4/plugins/wordCloud.js"></script>
+  
+
     <!-- Chart code -->
     <script>
    function draw_tag(order_by, chartname) {
@@ -444,32 +529,38 @@
         var temp_data = global_data
         var axis1 = ''
         var axis2 = ''
-        if(chartname == 'chartdiv2'){
-            temp_data = temp_data.filter(d => (d.rank_period1_only <= 50 || d.rank_period2_only <= 50 ))
+        if(chartname == 'chartdiv1'){
+            temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
+            for(i=0; i<temp_data.length; i++){
+                temp_data[i]['rank1'] =  temp_data[i]['rank_period1']
+                temp_data[i]['rank2'] =  temp_data[i]['rank_period2']
+            }
+            axis1 = 'total_period1'
+            axis2 = 'total_period2'
+        } else if(chartname =='chartdiv2') {
+            temp_data = temp_data.filter(d => ((d.rank_period1_only <= 50 && d.total_period2 == 0 ) || (d.rank_period2_only <= 50 && d.total_period1 == 0 )))
             for(i=0; i<temp_data.length; i++){
                 temp_data[i]['rank1'] =  temp_data[i]['rank_period1_only']
                 temp_data[i]['rank2'] =  temp_data[i]['rank_period2_only']
             }
             axis1 = 'total_period1'
             axis2 = 'total_period2'
-        } else if(chartname =='chartdiv1' || chartname =='chartdiv4') {
+        } else if (chartname == 'chartdiv3'){
             temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
             for(i=0; i<temp_data.length; i++){
-                temp_data[i]['rank1'] =  temp_data[i]['rank_period1']
-                temp_data[i]['rank2'] =  temp_data[i]['rank_period2']
-            }
-            axis1 = 'total_period1'
-            axis2 = 'total_period2'
-        } else {
-            
-            temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
-            for(i=0; i<temp_data.length; i++){
-                temp_data[i]['rank1'] =  temp_data[i]['rank_period1']
-                temp_data[i]['rank2'] =  temp_data[i]['rank_period2']
+                temp_data[i]['rank1'] =  temp_data[i]['polarity_avg_period1']
+                temp_data[i]['rank2'] =  temp_data[i]['polarity_avg_period2']
             }
             axis1 = 'polarity_avg_period1'
             axis2 = 'polarity_avg_period2'
-            //alert(temp_data.length)
+        }else if (chartname == 'chartdiv4'){
+            temp_data = temp_data.filter(d => (d.rank_period1 <= 50 || d.rank_period2 <= 50 ))
+            for(i=0; i<temp_data.length; i++){
+                temp_data[i]['rank1'] =  temp_data[i]['subjectivity_avg_period1']
+                temp_data[i]['rank2'] =  temp_data[i]['subjectivity_avg_period2']
+            }
+            axis1 = 'subjectivity_avg_period1'
+            axis2 = 'subjectivity_avg_period2'
         }
 
         if(order_by == 1){
@@ -487,7 +578,7 @@
         
         
         if(chartname == 'chartdiv5'){
-            var chart = am4core.create("chartdiv3", am4charts.RadarChart);
+            var chart = am4core.create("chartdiv5", am4charts.RadarChart);
             chart.data = temp_data
             var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
             categoryAxis.dataFields.category = "tag";
@@ -540,7 +631,7 @@
 
 
         
-        } else if (chartname == 'chartdiv1' || chartname == 'chartdiv2' || chartname == 'chartdiv3' || chartname == 'chartdiv4'){
+        } else if (chartname == 'chartdiv1' || chartname == 'chartdiv2' || chartname == 'chartdiv3' || chartname == 'chartdiv4'|| chartname == 'chartdiv5'|| chartname == 'chartdiv6'){
             var chart2 = am4core.create(chartname, am4charts.XYChart);
             chart2.data = temp_data
             var categoryAxis = chart2.xAxes.push(new am4charts.CategoryAxis());
@@ -593,48 +684,135 @@
 
     }; // end am4core.ready()
 
-    function change_order(order_by){
-        draw_tag(order_by,'chartdiv1')
+    function change_order(order_by, div){
+        draw_tag(order_by,div)
     }
 
 
+    function draw_wordcloud(div, period){
 
+        var temp_data = global_data
+
+        am4core.useTheme(am4themes_animated);
+        // Themes end
+
+        var chart = am4core.create(div, am4plugins_wordCloud.WordCloud);
+        chart.fontFamily = "Courier New";
+        var series = chart.series.push(new am4plugins_wordCloud.WordCloudSeries());
+        series.randomness = 0.1;
+        series.rotationThreshold = 0.5;
+
+        series.data = temp_data.filter(d => (d.period == period ))
+
+        series.dataFields.word = "tag";
+        series.dataFields.value = "count";
+
+        series.heatRules.push({
+        "target": series.labels.template,
+        "property": "fill",
+        "min": am4core.color("#0000CC"),
+        "max": am4core.color("#CC00CC"),
+        "dataField": "value"
+        });
+
+        series.labels.template.url = "https://www.google.com/search?q={word}";
+        series.labels.template.urlTarget = "_blank";
+        series.labels.template.tooltipText = "{word}: {value}";
+
+        var hoverState = series.labels.template.states.create("hover");
+        hoverState.properties.fill = am4core.color("#FF0000");
+
+        var subtitle = chart.titles.create();
+        subtitle.text = "(click to open)";
+
+        var title = chart.titles.create();
+        title.text = "Most Popular Words @ " + period;
+        title.fontSize = 20;
+        title.fontWeight = "800";
+
+    }
     
     </script>
     
     <!-- HTML -->
-    <div class="col-md-12">
+    <div class="col-md-12" id ='graph1' style='display: none;'>
         <div class="card mb-4" id='divcolor2'>
             <div class="card-body" style=>
-                <h3><b>Top Hashtags For Each Period</b></h3>
+                <h3><b>Period Analysis</b></h3>
                 <div id="chartdiv1">
-                    <button onclick="change_order(2)">Sort By Period 2</button>
+                    
                 </div>
-                
+                <button onclick="change_order(1,'chartdiv1')">Sort By Previous Period</button>
+                <button onclick="change_order(2,'chartdiv1')">Sort By Next Period</button>
+                <button onclick="change_order(3,'chartdiv1')">Sort Alphabetically</button>
             </div>
         </div>
     </div>
 
-    <div class="col-md-12" >
+    <div class="col-md-12" id ='graph2' style='display: none;'>
         <div class="card mb-4" id='divcolor2'>
             <div class="card-body" style=>
-                <h3><b>Top Hashtags For Each Period</b></h3>
+                <h3><b>Period Difference Analysis</b></h3>
                 <div id="chartdiv2">
                 </div>
+                <button onclick="change_order(1,'chartdiv2')">Sort By Previous Period</button>
+                <button onclick="change_order(2,'chartdiv2')">Sort By Next Period</button>
+                <button onclick="change_order(3,'chartdiv2')">Sort Alphabetically</button>
             </div>
         </div>
     </div>
 
-    <div class="col-md-12">
+    <div class="col-md-12" id ='graph3' style='display: none;'>
         <div class="card mb-4" id='divcolor2'>
             <div class="card-body" style=>
-                <h3><b>Top Hashtags For Each Period</b></h3>
+                <h3><b>Polarity Comparison</b></h3>
                 <div id="chartdiv3">
                 </div>
+                <button onclick="change_order(1,'chartdiv3')">Sort By Previous Period</button>
+                <button onclick="change_order(2,'chartdiv3')">Sort By Next Period</button>
+                <button onclick="change_order(3,'chartdiv3')">Sort Alphabetically</button>
             </div>
         </div>
     </div>
 
+    <div class="col-md-12" id ='graph4' style='display: none;'>
+        <div class="card mb-4" id='divcolor2'>
+            <div class="card-body" style=>
+                <h3><b>Subjectivity Comparison</b></h3>
+                <div id="chartdiv4">
+                </div>
+                <button onclick="change_order(1,'chartdiv4')">Sort By Previous Period</button>
+                <button onclick="change_order(2,'chartdiv4')">Sort By Next Period</button>
+                <button onclick="change_order(3,'chartdiv4')">Sort Alphabetically</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-12" id ='graph5' style='display: none;'>
+        <div class="card mb-4" id='divcolor2'>
+            <div class="card-body" style=>
+                <h3><b>Wordcloud</b></h3>
+                <div id="chartdiv5">
+                </div>
+    
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-12" id ='graph6' style='display: none;'>
+        <div class="card mb-4" id='divcolor2'>
+            <div class="card-body" style=>
+                <h3><b>Wordcloud</b></h3>
+                <div id="chartdiv6">
+                </div>
+    
+            </div>
+        </div>
+    </div>
+
+    
     
    
 

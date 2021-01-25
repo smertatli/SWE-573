@@ -43,6 +43,10 @@ RUN mkdir -p /home/mainapp
 # create the app user
 RUN addgroup -S mainapp && adduser -S mainapp -G mainapp
 
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
 # create the appropriate directories
 ENV HOME=/home/mainapp
 ENV APP_HOME=/home/mainapp/web
