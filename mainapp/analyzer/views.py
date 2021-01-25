@@ -15,10 +15,7 @@ import pickle
 import uuid 
 import nltk
 from nltk.corpus import stopwords
-nltk.download('stopwords')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('brown')
+
 import networkx as nx
 
 db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
@@ -1071,18 +1068,17 @@ def call_ajax(request):
 
         elif node_level == 'bigram':
             if domain == '':
-                print('BIGRAM:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
+                print('***------------------------------------------------------- BIGRAM:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
                 temp = pd.read_sql_query("""
                 with 
                     base as (
                         SELECT t.tweet_Tweet_id, elem, nr
-                        FROM   df_tweets_processed t, analyzer_processor_nlp b, tweet_main_table d,
+                        FROM   df_tweets_processed t, analyzer_processor_nlp b,
                         unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)
                         where 
                             b.id in ({0})
                             and t.processor_name = b.name
-                            and t.tweet_tweet_id = d.tweet_tweet_id
-                            and date(d.tweet_created_at) between '{1}' and '{2}'
+                            and date(t.created_at) between '{1}' and '{2}'
                     ),
                     base2 as (
                         select distinct a.tweet_tweet_id, concat(a.elem,' ', b.elem) as bigram,a.elem el1, b.elem el2
