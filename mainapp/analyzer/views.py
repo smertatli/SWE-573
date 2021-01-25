@@ -1328,7 +1328,7 @@ def call_ajax(request):
 
 
 def save_stopword(user, name, sw):
-    stopwords_file = '/usr/src/mainapp/' + name + '.pckl'
+    stopwords_file = '/tmp/' + name + '.pckl'
     engine = create_engine(db_connection_url)
     try:
         record = {}
@@ -1352,7 +1352,7 @@ def save_stopword(user, name, sw):
 
 
 def save_corrections(user, name, cor):
-    cor_file = '/usr/src/mainapp/' + name + '.pckl'
+    cor_file = '/tmp/' + name + '.pckl'
     print('***********************************************', cor, ast.literal_eval(cor), type(ast.literal_eval(cor)))
     engine = create_engine(db_connection_url)
     try:
