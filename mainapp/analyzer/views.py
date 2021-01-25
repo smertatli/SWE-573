@@ -16,6 +16,9 @@ import uuid
 import nltk
 from nltk.corpus import stopwords
 nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('brown')
 import networkx as nx
 
 db_connection_url = "postgresql://{}:{}@{}:{}/{}".format(
@@ -1068,9 +1071,10 @@ def call_ajax(request):
 
         elif node_level == 'bigram':
             if domain == '':
+                print('BIGRAM:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
                 temp = pd.read_sql_query("""
                 with 
-                    base adds (
+                    base as (
                         SELECT t.tweet_Tweet_id, elem, nr
                         FROM   df_tweets_processed t, analyzer_processor_nlp b, tweet_main_table d,
                         unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)

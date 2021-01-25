@@ -12,9 +12,6 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
     import ast
     from textblob import TextBlob
     import nltk
-    nltk.download('punkt')
-    nltk.download('averaged_perceptron_tagger')
-    nltk.download('brown')
     from nltk.corpus import stopwords
     import string
     import datetime
