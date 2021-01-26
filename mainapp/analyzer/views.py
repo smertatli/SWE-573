@@ -505,6 +505,12 @@ def call_ajax(request):
         node_level = request.POST.get('node_level')
         processor = request.POST.get('processor')
         top_n = request.POST.get('top_n')
+        exclude = request.POST.get('excluded_terms')
+        excluded_terms = ''
+        for elem in exclude.split('\n'):
+            excluded_terms = excluded_terms + "'" + elem.strip() + "',"
+        excluded_terms = excluded_terms[:-1]
+        
         if not domain:
             domain =''
         temp = ''
@@ -533,10 +539,11 @@ def call_ajax(request):
                         count(*) as value
                     from base a, base b, ids2 id1, ids2 id2
                     where a.tweet_Tweet_id=b.tweet_Tweet_id and a.domain < b.domain and a.domain = id1.domain and b.domain=id2.domain
+                    and a.domain not in ({4}) and b.domain not in ({4})
                     group by a.domain, b.domain, id1.id, id2.id, id1.node_size, id2.node_size 
                     order by count(*) desc
                     limit {3}
-                """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) ), engine)
+                """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) , excluded_terms), engine)
             else:
                 temp = pd.read_sql_query(""" 
                     with 
@@ -564,6 +571,7 @@ def call_ajax(request):
                         where
                             b.id in ({0}) and b.query_name = t.query_name and split_part(elem, '=', 1) = lower(c.domain_name)
                             and c.domain_id::int not in ({3}) and d.tweet_Tweet_id = t.tweet_Tweet_id
+                            and a.domain not in ({5}) and b.domain not in ({5})
                     ),
                     ids as (
                         select domain, count(*) node_size from base2 group by domain
@@ -580,7 +588,7 @@ def call_ajax(request):
                     group by a.domain, b.domain, id1.id, id2.id, id1.node_size, id2.node_size 
                     order by count(*) desc
                     limit {4}
-                """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ), engine)
+                """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms), engine)
 
             distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
 
@@ -621,6 +629,7 @@ def call_ajax(request):
                         where
                             split_part(elem, '=', 1) = domain_name and
                             d.tweet_Tweet_id = t.tweet_Tweet_id
+                            and split_part(elem, '=', 2) not in ({5})
                     ),
                     ids as (
                         select entity, count(*) node_size from base2 group by entity
@@ -637,7 +646,7 @@ def call_ajax(request):
                     group by a.entity, b.entity, id1.id, id2.id, id1.node_size, id2.node_size 
                     order by count(*) desc
                     limit {4}
-                """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ), engine)
+                """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms ), engine)
             else:
                 temp = pd.read_sql_query("""
                    with 
@@ -649,6 +658,7 @@ def call_ajax(request):
                             unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
                         where
                             b.id in ({0}) and b.query_name = t.query_name and date(tweet_created_at) between '{1}' and '{2}'
+                            and split_part(elem, '=', 2) not in ({4})
                     ),
                     ids as (
                         select entity, count(*) node_size from base group by entity
@@ -665,7 +675,7 @@ def call_ajax(request):
                     group by a.entity, b.entity, id1.id, id2.id, id1.node_size, id2.node_size 
                     order by count(*) desc
                     limit {3}
-                    """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) ), engine)
+                    """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ), engine)
 
 
 
@@ -689,6 +699,7 @@ def call_ajax(request):
                                     unnest(string_to_array(t.hashtags, '||')) WITH ORDINALITY a(elem, nr)
                                 where
                                     b.id in ({0}) and b.query_name = t.query_name and date(tweet_created_at) between '{1}' and '{2}'
+                                    and lower(elem) not in ({4})
                             ),
                             ids as (
                                 select tag, count(*) node_size from base group by tag
@@ -705,7 +716,7 @@ def call_ajax(request):
                             group by a.tag, b.tag, id1.id, id2.id, id1.node_size, id2.node_size 
                             order by count(*) desc
                             limit {3}
-                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
             else:
                 temp = pd.read_sql_query("""
                             with 
@@ -732,8 +743,8 @@ def call_ajax(request):
                                     tweet_main_table t, base d,
                                     unnest(string_to_array(t.hashtags, '||')) WITH ORDINALITY a(elem, nr)
                                 where
-                                    
                                     d.tweet_Tweet_id = t.tweet_Tweet_id
+                                    and lower(elem) not in ({5})
                             ),
                             ids as (
                                 select tag, count(*) node_size from base2 group by tag
@@ -750,7 +761,7 @@ def call_ajax(request):
                             group by a.tag, b.tag, id1.id, id2.id, id1.node_size, id2.node_size 
                             order by count(*) desc
                             limit {4}
-                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
     
             distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
 
@@ -779,6 +790,7 @@ def call_ajax(request):
                                     and split_part(elem, '=', 1) = lower(d.domain_name)
                                     and d.domain_id::bigint in ({3})
                                     and date(tweet_created_at) between '{1}' and '{2}'
+                                    
                             ),
                             base2 as (
                                 select distinct
@@ -789,6 +801,7 @@ def call_ajax(request):
                                     unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
                                 where
                                     d.tweet_Tweet_id = t.tweet_Tweet_id
+                                    and lower(elem) not in ({5})
                             ) ,
                             sums as (
                                 select distinct from_user from base2 union select distinct to_user from base2
@@ -809,7 +822,7 @@ def call_ajax(request):
                             order by count(*) desc
                             limit {4}
 
-                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms),engine)
             else:
                 temp = pd.read_sql_query("""
                             with 
@@ -823,6 +836,7 @@ def call_ajax(request):
                                     unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
                                 where
                                     b.id in ({0}) and date(tweet_created_at) between '{1}' and '{2}'
+                                    and lower(elem) not in ({4})
                             ) ,
                             sums as (
                                 select distinct from_user from base2 union select distinct to_user from base2
@@ -842,7 +856,7 @@ def call_ajax(request):
                             group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
                             order by count(*) desc
                             limit {3}
-                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
 
     
             tmp1 = temp[['from', 'from_name']]
@@ -908,6 +922,7 @@ def call_ajax(request):
                                 unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
                             where
                                 b.id in ({0}) and b.query_name = t.query_name and date(t.tweet_created_at) between '{1}' and '{2}'
+                                and lower(elem) not in ({4})
                         ),
                         ids as (
                             select tag, count(*) node_size from base group by tag
@@ -924,7 +939,7 @@ def call_ajax(request):
                         group by a.tag, b.tag, id1.id, id2.id, id1.node_size, id2.node_size 
                         order by count(*) desc
                         limit {3}
-                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n) , excluded_terms),engine)
             else:
                 temp = pd.read_sql_query("""
                         with 
@@ -952,6 +967,7 @@ def call_ajax(request):
                                 unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
                             where
                                 d.tweet_Tweet_id = t.tweet_Tweet_id
+                                and lower(elem) not in ({5})
                         ),
                         ids as (
                             select tag, count(*) node_size from base2 group by tag
@@ -968,7 +984,7 @@ def call_ajax(request):
                         group by a.tag, b.tag, id1.id, id2.id, id1.node_size, id2.node_size 
                         order by count(*) desc
                         limit {4}
-                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ),engine)
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
 
             tmp1 = temp[['from', 'from_name']]
             tmp2 = temp[['to', 'to_name']]
@@ -1041,6 +1057,7 @@ def call_ajax(request):
                         from base a, base b
                         where a.tweet_tweet_id = b.tweet_tweet_id and a.nr + 1 = b.nr 
                         and a.elem <> '' and b.elem <> ''
+                        and concat(a.elem,' ', b.elem) not in ({4})
                     ),
                     values as (select bigram, count(*) node_size from base2 group by bigram),
                     ids as (select bigram, row_number() over (order by node_size desc) id from values),
@@ -1057,7 +1074,7 @@ def call_ajax(request):
                     from calcs, values as v1, values as v2, ids as i1, ids as i2
                     where calcs.from_name = v1.bigram and calcs.to_name = v2.bigram and calcs.from_name = i1.bigram and calcs.to_name = i2.bigram 
                     
-                """.format(processor, start_date, end_date, str(100) if top_n == '' else str(top_n) ), engine)
+                """.format(processor, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ), engine)
             else:
                 temp = pd.read_sql_query("""
                     with domains as (
@@ -1086,6 +1103,7 @@ def call_ajax(request):
                         from base_new a, base_new b
                         where a.tweet_tweet_id = b.tweet_tweet_id and a.nr + 1 = b.nr 
                         and a.elem <> '' and b.elem <> ''
+                        and concat(a.elem,' ', b.elem) not in ({5})
                     ),
                     values as (select bigram, count(*) node_size from base2 group by bigram),
                     ids as (select bigram, row_number() over (order by node_size desc) id from values),
@@ -1102,7 +1120,7 @@ def call_ajax(request):
                     from calcs, values as v1, values as v2, ids as i1, ids as i2
                     where calcs.from_name = v1.bigram and calcs.to_name = v2.bigram and calcs.from_name = i1.bigram and calcs.to_name = i2.bigram 
 
-                """.format(processor, start_date, end_date, domain, str(100) if top_n == '' else str(top_n) ), engine)
+                """.format(processor, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms), engine)
             distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
             engine.dispose()
             return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),

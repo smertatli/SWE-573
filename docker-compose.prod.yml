@@ -5,7 +5,7 @@ services:
     build: 
       context: ./mainapp
       dockerfile: Dockerfile.prod
-    command: gunicorn trendspotter.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn trendspotter.wsgi:application --bind 0.0.0.0:8000  --timeout 120
     volumes:
       - ./mainapp/:/usr/src/mainapp/
       - static_volume:/home/mainapp/web/staticfiles

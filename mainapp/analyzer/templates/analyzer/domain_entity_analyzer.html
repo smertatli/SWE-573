@@ -24,7 +24,8 @@
                     <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
                     <li class="nav-item"><a href="#step-4" class="nav-link" >Step 4<br><small>This is step description</small></a></li>
-                    <li class="nav-item" style='display: none;' id ='processor_selector'><a href="#step-5" class="nav-link">Step 5<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-5" class="nav-link" >Step 5<br><small>Exclude these objects</small></a></li>
+                    <li class="nav-item" style='display: none;' id ='processor_selector'><a href="#step-6" class="nav-link">Step 6<br><small>This is step description</small></a></li>
                    
                 </ul>
                 <div>
@@ -106,6 +107,10 @@
                        
                     </div>
                     <div id="step-5"  >
+                        <h3><b>Exclude those objects (seperated by comma): </b></h3>
+                        <textarea id="excluded_terms" name="w3review" rows="4" cols="100"></textarea>
+                    </div>
+                    <div id="step-6"  >
                         <table id="processor_table" class="display" cellspacing="0" width="100%" >
                             <input type="hidden"  id='dummy' name='dummy'></input>
                             <thead>
@@ -363,7 +368,9 @@
             var start_date = document.getElementById("selectStartDate").value; 
             var end_date = document.getElementById("selectEndDate").value; 
             var node_level = document.querySelector('input[name="node_level"]:checked').value;
-            alert([arr, arr2, start_date, end_date, node_level])
+            var excluded_terms = document.getElementById('excluded_terms').value;
+            
+            alert([arr, arr2, start_date, end_date, node_level, excluded_terms])
 
             //draw_graph_fancy(arr, arr2);
         
@@ -379,7 +386,8 @@
                         'end_date':end_date,
                         'node_level':node_level,
                         'processor': document.getElementById('dummy').value,
-                        'top_n': document.getElementById('top_n').value
+                        'top_n': document.getElementById('top_n').value,
+                        'excluded_terms': excluded_terms
                         }
                 
             }).responseJSON;
