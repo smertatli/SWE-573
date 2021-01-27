@@ -1,0 +1,515 @@
+{% extends 'main.html' %} 
+
+{% load static %} 
+
+
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css' %}" />
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css' %}" />
+
+
+{% csrf_token %} 
+
+
+<div class="col-md-12" >
+    <div class="card mb-4" >
+        <div class="card-body" >
+
+            <!--  SmartWizard html -->
+            <div id="smartwizard" class="sw-main sw-theme-default" >
+                <ul class="nav nav-tabs step-anchor">
+                    <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
+                   
+                </ul>
+                <div>
+                    <div id="step-1">
+                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
+                            <table id="source_1" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
+                    </div>
+                    <div id="step-2" >
+                        <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
+                         <button   onclick='step_first();'>Get collected dates</button>
+                         <select name="date_start" id="selectStartDate1"></select>
+                         <select name="date_end" id="selectEndDate1"></select>
+                    </div>
+                    <div id="step-3"  >
+                        <div id='row' style='display: inline-block; width: 100%; '>
+                        <b>Including these domain(s):</b>
+                        <textarea rows="1" cols="100" id='domain'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these entity(s):
+                            <textarea rows="1" cols="100" id='entity'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these hashtag(s):
+                            <textarea rows="1" cols="100" id='hashtag'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these user(s):
+                            <textarea rows="1" cols="100" id='user'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these mentions(s):
+                            <textarea rows="1" cols="100" id='mention'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these phrase(s):
+                            <textarea rows="1" cols="100" id='phrase'></textarea>
+                        </div>
+
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Bucket Size for sentiment score histogram(s):
+                            <textarea rows="1" cols="10" id='bucket_size'></textarea>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="compare();">Analyze Sentiments, Polarity, and Show Tweets</button>
+        </div>
+        
+    </div>
+</div>
+
+
+
+
+
+
+<script src="{% static 'dist-assets/js/plugins/jquery.smartWizard.min.js' %}"></script>
+<script src="{% static 'dist-assets/js/scripts/smart.wizard.script.min.js' %}"></script>
+
+
+
+
+
+
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.colVis.min.js"></script>
+<link href="https://cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css" rel="stylesheet" />
+
+
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+    <script>
+ 
+
+        var global_data;
+        var processors = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {
+                'which': 'get_processors'
+            }
+        }).responseJSON;
+
+    
+        var processors1 = $('#source_1').DataTable({
+            data: processors,
+
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    'checkboxes': {
+                        'selectRow': true
+                    }
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']],
+            'columns': [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    null
+                ]
+        });
+
+        
+
+        
+
+        function step_first(){
+            var rows_selected = processors1.column(0).checkboxes.selected();
+            
+            // Iterate over all selected checkboxes
+            if(rows_selected.length > 0){
+                var arr = []
+                $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+               
+                var dates = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'get_processor_dates',
+                           'processors': arr.toString()
+                          }
+                    
+                }).responseJSON;
+                 
+
+                var start_date = document.getElementById("selectStartDate1"); 
+                var end_date = document.getElementById("selectEndDate1"); 
+
+                for (i = start_date.length-1; i >= 0; i--) {
+                    start_date.options[i] = null;
+                    end_date.options[i] = null;
+                    }
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    start_date.appendChild(el);
+        
+                });
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    end_date.appendChild(el);
+        
+                });
+            } else {
+                alert('Please select a data source first!');
+            }
+            
+        }
+
+
+
+        function step_second(){
+            var rows_selected = processors2.column(0).checkboxes.selected();
+            
+            // Iterate over all selected checkboxes
+            if(rows_selected.length > 0){
+                var arr = []
+                $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+                var dates = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'get_processor_dates',
+                           'processors': arr.toString()
+                          }
+                    
+                }).responseJSON;
+                 
+
+                var start_date = document.getElementById("selectStartDate2"); 
+                var end_date = document.getElementById("selectEndDate2"); 
+
+                for (i = start_date.length-1; i >= 0; i--) {
+                    start_date.options[i] = null;
+                    end_date.options[i] = null;
+                    }
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    start_date.appendChild(el);
+        
+                });
+
+                $.each(dates['dates'], function(i, p) {
+                    var el = document.createElement("option");
+                    el.textContent = p;
+                    el.value = p;
+                    end_date.appendChild(el);
+        
+                });
+            } else {
+                alert('Please select a data source first!');
+            }
+            
+        }
+    
+        
+
+        function compare(){
+            
+            var processor_selected1 = processors1.column(0).checkboxes.selected();
+            
+
+            var arr1 = [];
+            
+
+            $.each(processor_selected1, function(index, rowId){arr1.push(rowId)});
+             
+
+            var start_date = document.getElementById("selectStartDate1").value; 
+            var end_date = document.getElementById("selectEndDate1").value; 
+            var domain = document.getElementById("domain").value; 
+            var entity = document.getElementById("entity").value; 
+            var user = document.getElementById("user").value; 
+            var hashtag = document.getElementById("hashtag").value; 
+            var mention = document.getElementById("mention").value; 
+            var phrase = document.getElementById("phrase").value; 
+            var bucket_size = document.getElementById("bucket_size").value; 
+      
+
+            var comparisor_data = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {'which':'get_sentiments_and_tweets',
+                           'source1': arr1.toString(),
+                           
+                           'start_date':start_date,
+                           'end_date':end_date,
+                           
+                           'domain':domain ,
+                           'entity':entity ,
+                           'user': user,
+                           'hashtag':hashtag ,
+                           'mention':mention ,
+                           'phrase':phrase,
+                           'bucket_size': bucket_size
+                          }
+                    
+                }).responseJSON;
+            
+      
+                
+        alert(eval(comparisor_data['dist']))
+        // Themes begin
+        am4core.useTheme(am4themes_animated);
+        // Themes end
+
+        // Create chart instance
+        var chart = am4core.create("chartdiv1", am4charts.XYChart)
+            
+        chart.data = eval(comparisor_data['dist'])
+        // Create axes
+
+        var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+        categoryAxis.dataFields.category = "bucket";
+        categoryAxis.renderer.grid.template.location = 0;
+        categoryAxis.renderer.minGridDistance = 30;
+
+        categoryAxis.renderer.labels.template.adapter.add("dy", function(dy, target) {
+        if (target.dataItem && target.dataItem.index & 2 == 2) {
+            return dy + 25;
+        }
+        return dy;
+        });
+
+        var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+        // Create series
+        var series = chart.series.push(new am4charts.ColumnSeries());
+        series.dataFields.valueY = "total";
+        series.dataFields.categoryX = "bucket";
+        series.name = "total";
+        series.columns.template.tooltipText = "{categoryX}: [bold]{valueY}[/]";
+        series.columns.template.fillOpacity = .8;
+
+        var columnTemplate = series.columns.template;
+        columnTemplate.strokeWidth = 2;
+        columnTemplate.strokeOpacity = 1;
+
+    
+
+
+
+        var samples = $('#tweet_sample').DataTable({
+            data: comparisor_data['sample'],
+            dom: 'Bfrtip',
+            'destroy': true,
+            'columnDefs': [
+                {
+                    'targets': 0,
+                    
+                    'className': 'noVis'
+                }
+            ],
+            'select': {
+                'style': 'multi'
+            },
+            'order': [[1, 'asc']],
+            'columns': [
+                    null,
+                    null,
+                    {"visible": false},
+                    null,
+                    null,
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false},
+                    {"visible": false}
+                ],
+            'buttons': [
+                {
+                    'extend': 'colvis',
+                    'columns': ':not(.noVis)'
+                }
+             ],
+        });
+
+        }
+ 
+
+        
+
+    </script>
+
+
+
+
+
+
+
+
+
+
+<style>
+    #chartdiv1 {
+      width: 100%;
+      height: 600px;
+     
+    }
+
+    </style>
+    
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    
+ 
+    <script src="https://cdn.amcharts.com/lib/4/plugins/wordCloud.js"></script>
+  
+
+    <!-- Chart code -->
+    <script>
+   
+    
+    </script>
+    
+    <!-- HTML -->
+    <div class="col-md-12" id ='graph1' >
+        <div class="card mb-4" id='divcolor2'>
+            <div class="card-body" style=>
+                <h3><b>Period Analysis</b></h3>
+                <div id="chartdiv1">
+                    
+                </div>
+        
+            </div>
+        </div>
+    </div>
+    <div class="col-md-12" id ='graph1' >
+        <div class="card mb-4" id='divcolor2'>
+            <div class="card-body" style=>
+                <table id="tweet_sample" class="display" cellspacing="0" width="100%" >
+                    <thead>
+                    <tr>
+                            <th>original_Tweet</th>
+                            <th>processed_tweet</th>
+                            <th>created_at</th>
+                            <th>subjectivity</th>
+                            <th>polarity</th>
+                            <th>domain_entities</th>
+                            <th>hashtags</th>
+                            <th>username</th>
+                            <th>mentions</th>
+                            <th>pos</th>
+                            <th>noun_phrases</th>
+                            <th>tweet_retweet_count</th>
+                            <th>type</th>
+                    </tr>
+                    </thead>
+                    <tfoot>
+                    <tr>
+                        <th>original_Tweet</th>
+                        <th>processed_tweet</th>
+                        <th>created_at</th>
+                        <th>subjectivity</th>
+                        <th>polarity</th>
+                        <th>domain_entities</th>
+                        <th>hashtags</th>
+                        <th>username</th>
+                        <th>mentions</th>
+                        <th>pos</th>
+                        <th>noun_phrases</th>
+                        <th>tweet_retweet_count</th>
+                        <th>type</th>
+                    </tr>
+                    </tfoot>
+                </table>
+     
+            </div>
+        </div>
+    </div>
+
+   
+
+{% endblock %}
+</div>
+

@@ -1759,6 +1759,76 @@ def call_ajax(request):
             conn.close()
             return JsonResponse({'result':'NOK'})
     
+    elif which == 'get_sentiments_and_tweets':
+        engine = create_engine(db_connection_url)
+
+        source = request.POST.get('source1')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        domain = request.POST.get('domain')
+        entity = request.POST.get('entity')
+        hashtag = request.POST.get('hashtag')
+        user = request.POST.get('user')
+        mention = request.POST.get('mention')
+        phrase = request.POST.get('phrase')
+        bucket_size = request.POST.get('bucket_size')
+
+        criteria = ''
+        domain = ' OR '.join("position('"+a+"'"+' in domain_entities)>0' for a in domain.split(',') if a!='')
+
+        criteria += ' and (' + domain + ')' if domain else ''
+        entity = ' OR '.join("position('"+a+"'"+' in domain_entities)>0' for a in entity.split(',') if a!='')
+        criteria += ' and (' + entity + ')' if entity else ''
+        hashtag = ' OR '.join("position('"+a+"'"+' in hashtags)>0' for a in hashtag.split(',') if a!='')
+        criteria += ' and (' + hashtag + ')' if hashtag else ''
+        user = ' OR '.join("position('"+a+"'"+' in username)>0' for a in user.split(',') if a!='')
+        criteria += ' and (' + user + ')' if user else ''
+        mention = ' OR '.join("position('"+a+"'"+' in mentions)>0' for a in mention.split(',') if a!='')
+        criteria += ' and (' + mention + ')' if mention else ''
+        phrase = ' OR '.join("position('"+a+"'"+' in a.tweet_text)>0' for a in phrase.split(',') if a!='')
+        criteria += ' and (' + phrase + ')' if phrase else ''
+
+     
+
+        temp_dist = pd.read_sql_query("""
+                    select 
+                        ((polarity*{4})::int / {4}) as bucket, count(*) as total
+                    from 
+                        df_tweets_processed a, tweet_main_table b
+                    where 
+                        a.tweet_tweet_id = b.tweet_tweet_id 
+                        and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
+                        and date(a.created_at) between '{1}' and '{2}'
+                        {3}
+                    group by 
+                        (polarity*{4})::int / {4} 
+                    order by 
+                        (polarity*{4})::int / {4} 
+                    """.format(source, start_date, end_date, '' if not criteria else criteria, bucket_size),engine)
+        
+        temp_sample = pd.read_sql_query("""
+                    select distinct
+                        b.tweet_text as original_Tweet, a.tweet_text as processed_tweet, a.created_at, subjectivity, polarity, domain_entities, hashtags, username, mentions, pos, noun_phrases,
+                        tweet_retweet_count, type
+                    from 
+                        df_tweets_processed a, tweet_main_table b
+                    where 
+                        a.tweet_tweet_id = b.tweet_tweet_id 
+                        and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
+                        and date(a.created_at) between '{1}' and '{2}'
+                        {3}
+                        limit 100
+                    """.format(source, start_date, end_date, '' if not criteria else criteria),engine)
+        lst = []
+        for index, row in temp_sample.iterrows():
+            lst.append([row['original_tweet'], row['processed_tweet'],  
+                        row['created_at'], row['subjectivity'], row['polarity'], 
+                        row['domain_entities'], row['hashtags'], row['username'],
+                        row['mentions'],row['pos'],row['noun_phrases'],
+                        row['tweet_retweet_count'], row['type']])
+        
+        engine.dispose()
+        return JsonResponse({'dist': temp_dist.to_json(orient='records'), 'sample': lst})
 
 
 
@@ -1896,6 +1966,9 @@ def tweet_media_analyzer(request):
 
 def comparisor(request):
     return render(request, 'analyzer/comparisor.html')
+
+def deepdiver(request):
+    return render(request, 'analyzer/deepdiver.html')
 
 
 def get_network_metrics(temp):
