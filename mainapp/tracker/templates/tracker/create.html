@@ -48,9 +48,9 @@
       <div id="smartwizard" class="sw-main sw-theme-default" >
         
           <ul class="nav nav-tabs step-anchor">
-              <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>Query Specfication</small></a></li>
-              <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
-              <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
+              <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>Query Specifications</small></a></li>
+              <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>Collection Specifications</small></a></li>
+              <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>Collection Period</small></a></li>
               
           </ul>
           <div >
@@ -60,7 +60,9 @@
                
 
                 <h3 class="border-bottom border-gray pb-2"><h3><b>Specify your query by keyword, hashtags, and phrases</b></h3></h3>
+                For more information, please refer: https://developer.twitter.com/en/docs/twitter-api/tweets/search/integrate/build-a-query
                 <input type='text' class="col-md-12" value ='For example: (covid OR covid19)' id='user_query'> </input>
+                
             </div>
             <div id="step-2"  >
               <h3 class="border-bottom border-gray pb-2"><h3><b>Specify collection frequencies:</b></h3></h3>
@@ -87,9 +89,6 @@
                     <div class="card mb-4">
                         <div class="card-body">
                             <div class="card-title"><h3><b>Level 2</b></h3></div>
-                            <label class="radio radio-outline-primary">
-                                <input type="radio" name="level2_minute" value=1><span>1-Minute</span><span class="checkmark"></span>
-                            </label>
                             <label class="radio radio-outline-secondary">
                                 <input type="radio" name="level2_minute" value=5><span>5-Minute</span><span class="checkmark"></span>
                             </label>
@@ -223,14 +222,14 @@
       </div>
       <div class='row'>
           <div class="col-md-6">
-              <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Analyze Selected Processor</button>
+              <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Get Counts for Selected Track(s)</button>
          </div>
           <div class="col-md-6">
             
               <form action="{% url 'tracker:create_track' %}" method="POST">
                   {% csrf_token %}
                    <input type="hidden"  id='dummy' name='dummy'></input>
-                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_processors();">Cancel Selected Processor(s)</button>
+                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_processors();">Cancel Selected Track(s)</button>
                    
               </form>
              

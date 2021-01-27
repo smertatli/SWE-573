@@ -99,6 +99,15 @@
                             <input type="radio" name="node_level" value="mention_cooccurrence" onclick="show_processor_pane('no')"><span>Mention Cooccurence</span><span class="checkmark"></span>
                         </label>
                         <label class="radio radio-primary">
+                            <input type="radio" name="node_level" value="retweet" onclick="show_processor_pane('no')"><span>Retweet</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-primary">
+                            <input type="radio" name="node_level" value="quote" onclick="show_processor_pane('no')"><span>Quote</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-primary">
+                            <input type="radio" name="node_level" value="replied_to" onclick="show_processor_pane('no')"><span>Reply</span><span class="checkmark"></span>
+                        </label>
+                        <label class="radio radio-primary">
                             <input type="radio" name="node_level" value="bigram" onclick="show_processor_pane('processor')"><span>Bigrams</span><span class="checkmark"></span>
                         </label>
                         <b>Get Top N most frequent:</b>
@@ -447,7 +456,7 @@
                     }
                 },
             };
-            if(node_level == 'mention'){
+            if(node_level == 'mention' || node_level == 'retweet'){
                 options['edges']['arrows'] = {to: { enabled: true, scaleFactor: 1, type: "arrow" }}
             } 
 

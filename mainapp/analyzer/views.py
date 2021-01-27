@@ -836,7 +836,7 @@ def call_ajax(request):
                                     unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
                                 where
                                     b.id in ({0}) and date(tweet_created_at) between '{1}' and '{2}'
-                                    and lower(elem) not in ({4})
+                                    and lower(elem) not in ({4})  and b.query_name = t.query_name 
                             ) ,
                             sums as (
                                 select distinct from_user from base2 union select distinct to_user from base2
@@ -1128,6 +1128,288 @@ def call_ajax(request):
                                                 'bet_df': bet_df.to_json(orient='records'),
                                                 'ieg_df': eigen.to_json(orient='records'),
                                                 'clus_df': clustering.to_json(orient='records')})
+        
+        elif node_level == 'retweet':
+            if domain == '':
+                print('***------------------------------------------------------- retweet:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
+                temp = pd.read_sql_query("""
+                            with 
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, 
+                                    username as from_user,
+                                    lower(retweeted_user) as to_user
+                                from 
+                                    tweet_main_table t, tracker_tracker b
+                                where
+                                    b.id in ({0}) and date(tweet_created_at) between '{1}' and '{2}'
+                                    and (lower(retweeted_user) not in ({4}) and lower(username) not in ({4}) ) 
+                                    and b.query_name = t.query_name and retweeted_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {3}
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
+            else:
+                temp = pd.read_sql_query("""
+                            with 
+                            domains as (
+                                select domain_id, max(domain_name) as domain_name from df_annotation_domain group by domain_id
+                            ),
+                            base as (
+                                select distinct
+                                    t.tweet_Tweet_id
+                                from 
+                                    tweet_main_table t, tracker_tracker b, domains d,
+                                    unnest(string_to_array(t.domain_entities, '||')) WITH ORDINALITY a(elem, nr)
+                                where
+                                    b.id in ({0}) and b.query_name = t.query_name 
+                                    and split_part(elem, '=', 1) = lower(d.domain_name)
+                                    and d.domain_id::bigint in ({3})
+                                    and date(tweet_created_at) between '{1}' and '{2}'
+                                    
+                            ),
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, username as from_user,
+                                    lower(retweeted_user) as to_user
+                                from 
+                                    tweet_main_table t, base d
+                                where
+                                    d.tweet_Tweet_id = t.tweet_Tweet_id
+                                    and (lower(retweeted_user) not in ({5}) and lower(username) not in ({5}) ) 
+                                    and retweeted_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {4}
+
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms),engine)
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
+            engine.dispose()
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
+        
+        elif node_level == 'quote':
+            if domain == '':
+                print('***------------------------------------------------------- retweet:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
+                temp = pd.read_sql_query("""
+                            with 
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, 
+                                    username as from_user,
+                                    lower(quoted_user) as to_user
+                                from 
+                                    tweet_main_table t, tracker_tracker b
+                                where
+                                    b.id in ({0}) and date(tweet_created_at) between '{1}' and '{2}'
+                                    and (lower(quoted_user) not in ({4}) and lower(username) not in ({4}) ) 
+                                    and b.query_name = t.query_name and quoted_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {3}
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
+            else:
+                temp = pd.read_sql_query("""
+                            with 
+                            domains as (
+                                select domain_id, max(domain_name) as domain_name from df_annotation_domain group by domain_id
+                            ),
+                            base as (
+                                select distinct
+                                    t.tweet_Tweet_id
+                                from 
+                                    tweet_main_table t, tracker_tracker b, domains d,
+                                    unnest(string_to_array(t.domain_entities, '||')) WITH ORDINALITY a(elem, nr)
+                                where
+                                    b.id in ({0}) and b.query_name = t.query_name 
+                                    and split_part(elem, '=', 1) = lower(d.domain_name)
+                                    and d.domain_id::bigint in ({3})
+                                    and date(tweet_created_at) between '{1}' and '{2}'
+                                    
+                            ),
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, username as from_user,
+                                    lower(quoted_user) as to_user
+                                from 
+                                    tweet_main_table t, base d
+                                where
+                                    d.tweet_Tweet_id = t.tweet_Tweet_id
+                                    and (lower(quoted_user) not in ({5}) and lower(quoted_user) not in ({5}) ) 
+                                    and quoted_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {4}
+
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms),engine)
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
+            engine.dispose()
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
+        
+        elif node_level == 'replied_to':
+            if domain == '':
+                print('***------------------------------------------------------- retweet:', processor, start_date, end_date, str(100) if top_n == '' else str(top_n))
+                temp = pd.read_sql_query("""
+                            with 
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, 
+                                    username as from_user,
+                                    lower(replied_to_user) as to_user
+                                from 
+                                    tweet_main_table t, tracker_tracker b
+                                where
+                                    b.id in ({0}) and date(tweet_created_at) between '{1}' and '{2}'
+                                    and (lower(replied_to_user) not in ({4}) and lower(username) not in ({4}) ) 
+                                    and b.query_name = t.query_name and replied_to_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {3}
+                        """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
+            else:
+                temp = pd.read_sql_query("""
+                            with 
+                            domains as (
+                                select domain_id, max(domain_name) as domain_name from df_annotation_domain group by domain_id
+                            ),
+                            base as (
+                                select distinct
+                                    t.tweet_Tweet_id
+                                from 
+                                    tweet_main_table t, tracker_tracker b, domains d,
+                                    unnest(string_to_array(t.domain_entities, '||')) WITH ORDINALITY a(elem, nr)
+                                where
+                                    b.id in ({0}) and b.query_name = t.query_name 
+                                    and split_part(elem, '=', 1) = lower(d.domain_name)
+                                    and d.domain_id::bigint in ({3})
+                                    and date(tweet_created_at) between '{1}' and '{2}'
+                                    
+                            ),
+                            base2 as (
+                                select distinct
+                                    t.tweet_Tweet_id, username as from_user,
+                                    lower(replied_to_user) as to_user
+                                from 
+                                    tweet_main_table t, base d
+                                where
+                                    d.tweet_Tweet_id = t.tweet_Tweet_id
+                                    and (lower(replied_to_user) not in ({5}) and lower(replied_to_user) not in ({5}) ) 
+                                    and replied_to_user is not null
+                            ) ,
+                            sums as (
+                                select distinct from_user from base2 union select distinct to_user from base2
+                            ),
+                            ids as (
+                                select from_user, count(*) node_size from sums group by from_user
+                            ),
+                            ids2 as (
+                                select *, row_number() over (order by node_size desc) as id from ids
+                            )
+                            select 
+                                a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
+                                a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
+                                count(*) as value
+                            from base2 a, ids2 id1, ids2 id2
+                            where a.from_user = id1.from_user and a.to_user = id2.from_user
+                            group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
+                            order by count(*) desc
+                            limit {4}
+
+                        """.format(track, start_date, end_date, domain, str(100) if top_n == '' else str(top_n), excluded_terms),engine)
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
+            engine.dispose()
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
 
 
     elif which == 'domain_top_entities_graph':
@@ -1303,44 +1585,52 @@ def call_ajax(request):
                     where 
                         rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
                     """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level, '1' if level =='domains' else '2'), engine)
-        elif level == 'ref_username':
+        elif level in ('retweeted_user', 'quoted_user','replied_to_user'):
+            metric = ''
+            if level == 'retweeted_user':
+                metric = 'tweet_retweet_count'
+            elif level == 'quoted_user':
+                metric = 'tweet_quote_count'
+            else:
+                metric = 'tweet_reply_count'
+
             temp = pd.read_sql_query("""
                 with period1 as (
                         select distinct
-                            lower(ref_username) as tag,
+                            lower({6}) as tag,
                             avg(polarity) as avg_polarity,
                             avg(subjectivity) as avg_subjectivity,
-                            max(tweet_retweet_count) as total
+                            max({7}) as total
                         from 
                             df_tweets_processed v, 
                             analyzer_processor_nlp b,
                             tweet_main_table d
                         where 
-                            v.tweet_tweet_id = d.retweeted_tweet_id and
+                            v.tweet_tweet_id = d.{8} and
                             ((b.id in ({0}) and date(v.created_at) between '{1}' and '{2}'))
                             and v.processor_name = b.name
-                            and type ='retweeted'
+                            and {6} is not null
                         group by
-                            lower(ref_username) 
+                            lower({6}) 
                     
                     ),
                     period2 as (
                         select distinct
-                            lower(ref_username) as tag,
+                            lower({6}) as tag,
                             avg(polarity) as avg_polarity,
                             avg(subjectivity) as avg_subjectivity,
-                            max(tweet_retweet_count) as total
+                            max({7}) as total
                         from 
                             tweet_main_table d,
                             df_tweets_processed v, 
                             analyzer_processor_nlp b 
                         where 
-                            v.tweet_tweet_id = d.retweeted_tweet_id and
+                            v.tweet_tweet_id = d.{8} and
                             ((b.id in ({3}) and date(v.created_at) between '{4}' and '{5}'))
                             and v.processor_name = b.name
-                            and type ='retweeted'
+                            and {6} is not null
                         group by
-                            lower(ref_username) 
+                            lower({6}) 
                     ),
                     comp as (
                     select 
@@ -1367,7 +1657,8 @@ def call_ajax(request):
                         comp 
                     where 
                         rank_period1 <= 50 or rank_period2 <= 50  or rank_period1_only <= 50 or rank_period2_only <= 50
-                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2), engine)
+                    """.format(source1, start_date1, end_date1,source2, start_date2, end_date2, level,metric, 'retweeted_tweet_id' if level == 'retweeted_user' else 'tweet_tweet_id'), engine)
+            print('quoted...')
         elif level in ['annotation_persons','annotation_org','annotation_product','annotation_place','annotation_other']:
             temp = pd.read_sql_query("""
                 with period1 as (
@@ -1589,7 +1880,7 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, c
                         stopwords_file=stopwords,
                         corrections_file=corrections,
                         schedule_type='I',
-                        minutes = 1,
+                        minutes = 5,
                         repeats = 100000000
                         )
     except Exception as e:
