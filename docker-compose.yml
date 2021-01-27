@@ -3,7 +3,7 @@ version: '3.3'
 services:
   web:
     build: ./mainapp
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:8000 --insecure
     volumes:
       - ./mainapp/:/usr/src/mainapp/
     ports:

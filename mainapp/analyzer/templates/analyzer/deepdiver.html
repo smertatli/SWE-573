@@ -337,10 +337,12 @@
         // Themes begin
         am4core.useTheme(am4themes_animated);
         // Themes end
-
+        
         // Create chart instance
         var chart = am4core.create("chartdiv1", am4charts.XYChart)
             
+        chart.scrollbarX = new am4core.Scrollbar();
+
         chart.data = eval(comparisor_data['dist'])
         // Create axes
 
@@ -348,27 +350,41 @@
         categoryAxis.dataFields.category = "bucket";
         categoryAxis.renderer.grid.template.location = 0;
         categoryAxis.renderer.minGridDistance = 30;
-
-        categoryAxis.renderer.labels.template.adapter.add("dy", function(dy, target) {
-        if (target.dataItem && target.dataItem.index & 2 == 2) {
-            return dy + 25;
-        }
-        return dy;
-        });
+        categoryAxis.renderer.labels.template.horizontalCenter = "right";
+        categoryAxis.renderer.labels.template.verticalCenter = "middle";
+        categoryAxis.renderer.labels.template.rotation = 270;
+        categoryAxis.tooltip.disabled = true;
+        categoryAxis.renderer.minHeight = 110;
 
         var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+        valueAxis.renderer.minWidth = 50;
 
         // Create series
         var series = chart.series.push(new am4charts.ColumnSeries());
+        series.sequencedInterpolation = true;
         series.dataFields.valueY = "total";
         series.dataFields.categoryX = "bucket";
-        series.name = "total";
-        series.columns.template.tooltipText = "{categoryX}: [bold]{valueY}[/]";
-        series.columns.template.fillOpacity = .8;
+        series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+        series.columns.template.strokeWidth = 0;
 
-        var columnTemplate = series.columns.template;
-        columnTemplate.strokeWidth = 2;
-        columnTemplate.strokeOpacity = 1;
+        series.tooltip.pointerOrientation = "vertical";
+
+        series.columns.template.column.cornerRadiusTopLeft = 10;
+        series.columns.template.column.cornerRadiusTopRight = 10;
+        series.columns.template.column.fillOpacity = 0.8;
+
+        // on hover, make corner radiuses bigger
+        var hoverState = series.columns.template.column.states.create("hover");
+        hoverState.properties.cornerRadiusTopLeft = 0;
+        hoverState.properties.cornerRadiusTopRight = 0;
+        hoverState.properties.fillOpacity = 1;
+
+        series.columns.template.adapter.add("fill", function(fill, target) {
+        return chart.colors.getIndex(target.dataItem.index);
+        });
+
+        // Cursor
+        chart.cursor = new am4charts.XYCursor();
 
     
 
@@ -390,6 +406,7 @@
             },
             'order': [[1, 'asc']],
             'columns': [
+                    null,
                     null,
                     null,
                     {"visible": false},
@@ -472,6 +489,8 @@
                     <tr>
                             <th>original_Tweet</th>
                             <th>processed_tweet</th>
+                            <th>tweet_tweet_id</th>
+                            
                             <th>created_at</th>
                             <th>subjectivity</th>
                             <th>polarity</th>
@@ -489,6 +508,7 @@
                     <tr>
                         <th>original_Tweet</th>
                         <th>processed_tweet</th>
+                        <th>tweet_tweet_id</th>
                         <th>created_at</th>
                         <th>subjectivity</th>
                         <th>polarity</th>

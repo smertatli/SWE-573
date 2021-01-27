@@ -1777,43 +1777,62 @@ def call_ajax(request):
         domain = ' OR '.join("position('"+a+"'"+' in domain_entities)>0' for a in domain.split(',') if a!='')
 
         criteria += ' and (' + domain + ')' if domain else ''
-        entity = ' OR '.join("position('"+a+"'"+' in domain_entities)>0' for a in entity.split(',') if a!='')
+        entity = ' OR '.join("position('"+a.lower()+"'"+' in lower(domain_entities))>0' for a in entity.split(',') if a!='')
         criteria += ' and (' + entity + ')' if entity else ''
-        hashtag = ' OR '.join("position('"+a+"'"+' in hashtags)>0' for a in hashtag.split(',') if a!='')
+        hashtag = ' OR '.join("position('"+a.lower()+"'"+' in lower(hashtags))>0' for a in hashtag.split(',') if a!='')
         criteria += ' and (' + hashtag + ')' if hashtag else ''
-        user = ' OR '.join("position('"+a+"'"+' in username)>0' for a in user.split(',') if a!='')
+        user = ' OR '.join("position('"+a.lower()+"'"+' in lower(username))>0' for a in user.split(',') if a!='')
         criteria += ' and (' + user + ')' if user else ''
-        mention = ' OR '.join("position('"+a+"'"+' in mentions)>0' for a in mention.split(',') if a!='')
+        mention = ' OR '.join("position('"+a.lower()+"'"+' in lower(mentions))>0' for a in mention.split(',') if a!='')
         criteria += ' and (' + mention + ')' if mention else ''
-        phrase = ' OR '.join("position('"+a+"'"+' in a.tweet_text)>0' for a in phrase.split(',') if a!='')
+        phrase = ' OR '.join("position('"+a.lower()+"'"+' in lower(a.tweet_text))>0' for a in phrase.split(',') if a!='')
         criteria += ' and (' + phrase + ')' if phrase else ''
 
      
+        
 
         temp_dist = pd.read_sql_query("""
-                    select 
-                        ((polarity*{4})::int / {4}) as bucket, count(*) as total
-                    from 
-                        df_tweets_processed a, tweet_main_table b
-                    where 
-                        a.tweet_tweet_id = b.tweet_tweet_id 
-                        and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
-                        and date(a.created_at) between '{1}' and '{2}'
-                        {3}
-                    group by 
-                        (polarity*{4})::int / {4} 
-                    order by 
-                        (polarity*{4})::int / {4} 
+                    with base as (
+                        select 
+                            (((polarity*{4})::int)::float / {4}) as bucket
+                        from 
+                            df_tweets_processed a, tweet_main_table b
+                        where 
+                            a.tweet_tweet_id = b.tweet_tweet_id 
+                            and a.processor_name in (select processor_name from analyzer_processor_nlp where id in ({0}) )
+                            and date(a.created_at) between '{1}' and '{2}'
+                            {3}
+                    
+                        union all
+
+                        select 
+                            (((polarity*{4})::int)::float / {4})  as bucket
+                        from 
+                            df_tweets_processed a, tweet_main_table b
+                        where 
+                            a.tweet_tweet_id = b.retweeted_tweet_id 
+                            and a.processor_name in (select processor_name from analyzer_processor_nlp where id in ({0}) )
+                            and date(a.created_at) between '{1}' and '{2}'
+                            {3}
+                        )   
+                        select 
+                            bucket, count(*) as total
+                        from 
+                            base
+                        group by 
+                            bucket
+                        order by 
+                            bucket
                     """.format(source, start_date, end_date, '' if not criteria else criteria, bucket_size),engine)
         
         temp_sample = pd.read_sql_query("""
                     select distinct
-                        b.tweet_text as original_Tweet, a.tweet_text as processed_tweet, a.created_at, subjectivity, polarity, domain_entities, hashtags, username, mentions, pos, noun_phrases,
+                        b.tweet_text as original_Tweet, a.tweet_text as processed_tweet, a.tweet_tweet_id, a.created_at, subjectivity, polarity, domain_entities, hashtags, username, mentions, pos, noun_phrases,
                         tweet_retweet_count, type
                     from 
                         df_tweets_processed a, tweet_main_table b
                     where 
-                        a.tweet_tweet_id = b.tweet_tweet_id 
+                        (a.tweet_tweet_id = b.tweet_tweet_id or a.tweet_tweet_id = b.retweeted_tweet_id) 
                         and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
                         and date(a.created_at) between '{1}' and '{2}'
                         {3}
@@ -1821,7 +1840,7 @@ def call_ajax(request):
                     """.format(source, start_date, end_date, '' if not criteria else criteria),engine)
         lst = []
         for index, row in temp_sample.iterrows():
-            lst.append([row['original_tweet'], row['processed_tweet'],  
+            lst.append([row['original_tweet'], row['processed_tweet'],   row['tweet_tweet_id'],
                         row['created_at'], row['subjectivity'], row['polarity'], 
                         row['domain_entities'], row['hashtags'], row['username'],
                         row['mentions'],row['pos'],row['noun_phrases'],
