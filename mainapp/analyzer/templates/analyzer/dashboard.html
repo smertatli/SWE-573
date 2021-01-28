@@ -6,6 +6,473 @@
 
 {% block content %}
 
+ <!-- Resources -->
+ <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+ <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+ <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+
+ <style>
+      #retweet {
+    width: 100%;
+    height: 500px;
+  }
+
+  #mention {
+    width: 100%;
+    height: 500px;
+  }
+
+  #hashtag {
+    width: 100%;
+    height: 500px;
+  }
+
+  #entity {
+    width: 100%;
+    height: 500px;
+  }
+
+  #domain {
+    width: 100%;
+    height: 500px;
+  }
+
+  #annotation_persons {
+    width: 100%;
+    height: 500px;
+  }
+
+  #annotation_product {
+    width: 100%;
+    height: 500px;
+  }
+
+  #annotation_place {
+    width: 100%;
+    height: 500px;
+  }
+
+  #annotation_org {
+    width: 100%;
+    height: 500px;
+  }
+
+  #annotation_other {
+    width: 100%;
+    height: 500px;
+  }
+
+  #chartdiv_count {
+    width: 100%;
+    height: 500px;
+  }
+
+  #tweet_pie_prev {
+    width: 100%;
+    height: 400px;
+  }
+
+  #tweet_pie_next {
+    width: 100%;
+    height: 400px;
+  }
+ </style>
+
+ <!-- Chart code -->
+ <script>
+
+    var mydata = $.ajax({
+        type: 'POST',
+        async: false,
+        url: '{% url "analyzer:call_ajax" %}',
+        dataType: 'json',
+        data: {
+            'which': 'get_dashboard_info'
+        }
+    }).responseJSON;
+    
+    for (var key in mydata){
+        if(key != 'tweet_pie_prev' && key != 'tweet_pie_next' && key != 'trend'){
+            draw(mydata[key], key)
+           
+        }
+       
+        
+    }
+
+
+
+
+
+
+    function draw(the_data, div){
+        am4core.useTheme(am4themes_animated);
+
+        // Create chart instance
+        var chart = am4core.create(div, am4charts.XYChart);
+
+        // Add data
+        chart.data = the_data
+
+        var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+categoryAxis.dataFields.category = "object";
+categoryAxis.renderer.grid.template.location = 0;
+categoryAxis.renderer.minGridDistance = 30;
+categoryAxis.renderer.labels.template.horizontalCenter = "right";
+categoryAxis.renderer.labels.template.verticalCenter = "middle";
+categoryAxis.renderer.labels.template.rotation = 270;
+categoryAxis.tooltip.disabled = true;
+categoryAxis.renderer.minHeight = 110;
+
+var  valueAxis = chart.yAxes.push(new am4charts.ValueAxis()); 
+valueAxis.renderer.opposite = true;
+
+// Create series
+function createSeries(field, name) {
+  var series = chart.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueY = field;
+  series.dataFields.categoryX = "object";
+  series.name = name;
+  series.columns.template.tooltipText = "{name}: {categoryX} [bold]{valueY}[/]";
+ 
+ 
+
+
+
+ 
+}
+
+createSeries("prev", "Previous");
+createSeries("next", "Next");
+
+ chart.legend = new am4charts.Legend();
+chart.legend.useDefaultMarker = true;
+    }
+
+    
+
+
+
+    draw_count();
+
+
+
+
+
+    function draw_count()
+  {
+    
+        // Create chart instance
+      var chart = am4core.create("chartdiv_count", am4charts.XYChart);
+      chart.scrollbarX = new am4core.Scrollbar();
+      // Add data
+      
+     
+      
+
+      chart.data = mydata['trend']
+      
+      
+      
+      var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+      categoryAxis.dataFields.category = "key_formatted";
+      categoryAxis.renderer.grid.template.location = 0;
+      categoryAxis.renderer.minGridDistance = 30;
+      categoryAxis.renderer.labels.template.horizontalCenter = "right";
+      categoryAxis.renderer.labels.template.verticalCenter = "middle";
+      categoryAxis.renderer.labels.template.rotation = 270;
+      categoryAxis.tooltip.disabled = true;
+      categoryAxis.renderer.minHeight = 5;
+      categoryAxis.renderer.inversed = true;
+      
+
+      var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis.renderer.minWidth = 5;
+
+      var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis2.title.text = "Type %";
+      valueAxis2.renderer.opposite = true;
+      valueAxis2.renderer.grid.template.disabled = true;
+
+      // Create series
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.sequencedInterpolation = true;
+      series.dataFields.valueY = "total";
+      series.yAxis = valueAxis;
+      series.dataFields.categoryX = "key_formatted";
+      series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+      series.columns.template.strokeWidth = 0;
+      series.propertyFields.fill = am4core.color("#ff0000");
+
+
+      var series2 = chart.series.push(new am4charts.LineSeries());
+      series2.dataFields.valueY = "replied_to";
+      series2.dataFields.categoryX = "key_formatted";
+      series2.name = "replied_to";
+      series2.strokeWidth = 2;
+      series2.tensionX = 0.7;
+      series2.yAxis = valueAxis2;
+      series2.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series3 = chart.series.push(new am4charts.LineSeries());
+      series3.dataFields.valueY = "quoted";
+      series3.dataFields.categoryX = "key_formatted";
+      series3.name = "quoted";
+      series3.strokeWidth = 2;
+      series3.tensionX = 0.7;
+      series3.yAxis = valueAxis2;
+      series3.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series4 = chart.series.push(new am4charts.LineSeries());
+      series4.dataFields.valueY = "retweeted";
+      series4.dataFields.categoryX = "key_formatted";
+      series4.name = "retweeted";
+      series4.strokeWidth = 2;
+      series4.tensionX = 0.7;
+      series4.yAxis = valueAxis2;
+      series4.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+      var series5 = chart.series.push(new am4charts.LineSeries());
+      series5.dataFields.valueY = "regular";
+      series5.dataFields.categoryX = "key_formatted";
+      series5.name = "regular";
+      series5.strokeWidth = 2;
+      series5.tensionX = 0.7;
+      series5.yAxis = valueAxis2;
+      series5.tooltipText = "{name}\n[bold font-size: 20]{valueY}[/]";
+
+
+
+      
+
+      series.tooltip.pointerOrientation = "vertical";
+
+      
+      series.columns.template.column.cornerRadiusTopLeft = 10;
+      series.columns.template.column.cornerRadiusTopRight = 10;
+      series.columns.template.column.fillOpacity = 0.8;
+        
+        // on hover, make corner radiuses bigger
+        var hoverState = series.columns.template.column.states.create("hover");
+        hoverState.properties.cornerRadiusTopLeft = 0;
+        hoverState.properties.cornerRadiusTopRight = 0;
+        hoverState.properties.fillOpacity = 1;
+
+        
+        series.columns.template.adapter.add("fill", (fill, target) => {
+            if (target.dataItem.index < 25){
+                return am4core.color('#6794dc')
+            }
+            else {
+                return am4core.color('#67b7dc')
+            }
+        });
+        // Cursor
+        chart.cursor = new am4charts.XYCursor();
+  }
+
+    draw_pie('tweet_pie_prev')
+    draw_pie('tweet_pie_next')
+
+  function draw_pie(label){
+
+    var chart = am4core.create(label, am4charts.PieChart);
+
+            // Add data
+            chart.data = mydata[label]
+
+            // Add and configure Series
+            var pieSeries = chart.series.push(new am4charts.PieSeries());
+            pieSeries.dataFields.value = "retweet_cnt";
+            pieSeries.dataFields.category = "object";
+
+            // Let's cut a hole in our Pie chart the size of 40% the radius
+            chart.innerRadius = am4core.percent(40);
+
+            // Put a thick white border around each Slice
+            pieSeries.slices.template.stroke = am4core.color("#4a2abb");
+            pieSeries.slices.template.strokeWidth = 2;
+            pieSeries.slices.template.strokeOpacity = 1;
+
+
+            pieSeries.colors.list = [
+  am4core.color("#F9844A"),
+  am4core.color("#F9C74F"),
+  am4core.color("#90BE6D"),
+  am4core.color("#43AA8B"),
+  am4core.color("#577590"),
+
+];
+            
+            // Add a legend
+            chart.legend = new am4charts.Legend();
+
+  }
+
+
+ </script>
+
+
+
+<header class="main-header bg-white d-flex justify-content-between p-2">
+    <div class="header-toggle">
+        <div class="menu-toggle mobile-menu-icon">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div><i class="i-Add-UserStar mr-3 text-20 cursor-pointer" data-toggle="tooltip" data-placement="top" title="" data-original-title="Todo"></i><i class="i-Speach-Bubble-3 mr-3 text-20 cursor-pointer" data-toggle="tooltip" data-placement="top" title="" data-original-title="Chat"></i><i class="i-Email mr-3 text-20 mobile-hide cursor-pointer" data-toggle="tooltip" data-placement="top" title="" data-original-title="Inbox"></i><i class="i-Calendar-4 mr-3 mobile-hide text-20 cursor-pointer" data-toggle="tooltip" data-placement="top" title="" data-original-title="Calendar"></i><i class="i-Checkout-Basket mobile-hide mr-3 text-20 cursor-pointer" data-toggle="tooltip" data-placement="top" title="" data-original-title="Calendar"></i>
+    </div>
+    <div class="header-part-right">
+        <!-- Full screen toggle--><i class="i-Full-Screen header-icon d-none d-sm-inline-block" data-fullscreen=""></i>
+        
+    </div>
+</header>
+
+<div class="breadcrumb">
+     
+    <ul>
+        <li><a href="href">General Info of Current Active Tracker</a></li>
+         
+    </ul>
+</div>
+
+<div id='row'>
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Collected Tweets by Frequency Level (Last 50 collection point)</b></h1></div>
+        <div id="chartdiv_count"></div>
+      </div>
+    </div>
+</div>
+
+<div class='row'>
+
+<div class="col-sm-6">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Tweet Distribution Prev Period</b></h1></div>
+        <div id="tweet_pie_prev"></div>
+        </div>
+    </div>
+</div>
+
+<div class="col-sm-6">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Tweet Distribution Next Period</b></h1></div>
+        <div id="tweet_pie_next"></div>
+        </div>
+    </div>
+</div>
+</div>
+
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Retweeted Users by Periods</b></h1></div>
+        <div id="retweet"></div>
+      </div>
+    </div>
+</div>
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Mentioned Users by Periods</b></h1></div>
+        <div id="mention"></div>
+      </div>
+    </div>
+</div>
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Hashtags by Periods</b></h1></div>
+        <div id="hashtag"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Entities by Periods</b></h1></div>
+        <div id="entity"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Domains by Periods</b></h1></div>
+        <div id="domain"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Annotations(Product) by Periods</b></h1></div>
+        <div id="annotation_product"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Annotations(Place) by Periods</b></h1></div>
+        <div id="annotation_place"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Annotations(Person) by Periods</b></h1></div>
+        <div id="annotation_persons"></div>
+      </div>
+    </div>
+</div>
+
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Annotations(Organization) by Periods</b></h1></div>
+        <div id="annotation_org"></div>
+      </div>
+    </div>
+</div>
+
+<div class="col-md-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Top 10 Annotations(Other) by Periods</b></h1></div>
+        <div id="annotation_other"></div>
+      </div>
+    </div>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 {% endblock %}

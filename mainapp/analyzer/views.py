@@ -443,35 +443,69 @@ def call_ajax(request):
 
     elif which == 'get_word_freqs_and_bigrams_for_check':
         import collections
+        import random
         ids = request.POST.get('selected')
+        rand = random.randint(0,4)
+        print('selecting for:', str(rand))
+        tracker_ids = pd.read_sql_query('select tracker from analyzer_processor_nlp where id in ({0})'.format(ids), engine)
+        total_count = 0
+        if not tracker_ids.empty:
+            total_count = pd.read_sql_query("""select count(*) tot from tweet_main_table 
+                          where query_name in (select query_name from tracker_tracker where id in ({0}))""".format(tracker_ids['tracker'][0]), engine)
+        total = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                SELECT sum(multiplier) as total_processed, count(*) as total_compressed, {1} as total_collected
+                FROM   df_tweets_processed t, base b
+                where t.processor_name = b.name  
+                """.format(ids, total_count['tot'][0] if not total_count.empty else total_count), engine)
+        if not total.empty:
+            total = total.melt(var_name="funnel", value_name="count")
+            total = total.sort_values(by=['count'], ascending=False)
+
+        word_cnt_dist = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                SELECT ((array_length(regexp_split_to_array(tweet_text, '\s+'), 1))::float / 5)::int*5 as bucket, count(*) as total
+                FROM   df_tweets_processed t, base b
+                where t.processor_name = b.name  
+                group by bucket
+                order by bucket
+                """.format(ids, rand), engine)
+
+        length_dist = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                SELECT (length(tweet_text)::float / 10)::int*10 as bucket, count(*) as total
+                FROM   df_tweets_processed t, base b
+                where t.processor_name = b.name  
+                group by bucket
+                order by bucket
+                """.format(ids), engine)
+
         word = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT b.name, elem,count(distinct tweet_Tweet_id) as freq
                 FROM   df_tweets_processed t, base b,
                 unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)  
-                where t.processor_name = b.name and elem > ''
+                where t.processor_name = b.name and elem > '' and tweet_tweet_id::bigint % 5 = {1} 
                 group by b.name, elem
                 order by 3 desc
                 limit 1000
-                """.format(ids), engine)
-        
+                """.format(ids, rand), engine)
+        print('calculating bigram freqs')
         bigram = pd.read_sql_query("""
                 with proc as (select distinct name from analyzer_processor_nlp where id in ({0})),
                 base as (
-                    SELECT b.name,tweet_Tweet_id, elem, nr
+                    SELECT b.name,tweet_Tweet_id, elem, nr, lag(elem) over (partition by tweet_tweet_id order by nr) as elem2
                     FROM   df_tweets_processed t,  proc b,
                     unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)
-                    where t.processor_name = b.name
-                ),
-                base2 as (
-                select b.name, concat(a.elem,' ', b.elem) as bigram, count(distinct a.tweet_tweet_id) as freq
-                from base a, base b
-                where a.tweet_tweet_id = b.tweet_tweet_id and a.nr + 1 = b.nr 
-                and a.elem <> '' and b.elem <> ''
-                group by b.name, concat(a.elem,' ', b.elem) 
+                    where t.processor_name = b.name and tweet_tweet_id::bigint % 5 = {1} 
                 )
-                select * from base2 order by freq desc limit 1000
-                """.format(ids), engine)
+                select name, concat(elem, ' ', elem2) as bigram, count(distinct tweet_Tweet_id) as freq 
+                from base
+                where elem <> '' and elem2 <> ''
+                group by name, concat(elem, ' ', elem2) 
+                order by count(distinct tweet_Tweet_id) desc 
+                limit 1000
+                """.format(ids, rand), engine)
 
         word_arr = []
         for index, row in word.iterrows():
@@ -481,7 +515,9 @@ def call_ajax(request):
         for index, row in bigram.iterrows():
             bigram_arr.append([row[0], row[1], row[2]]) 
         engine.dispose()
-        return JsonResponse({'word_count': word_arr, 'bigram': bigram_arr})  
+        return JsonResponse({'word_count': word_arr, 'bigram': bigram_arr, 'total': total.to_dict(orient='records'), 
+                             'word_cnt_dist':word_cnt_dist.to_dict(orient='records'),
+                             'length_dist': length_dist.to_dict(orient='records')})  
        
     elif which == 'get_images':
         temp = pd.read_sql_query("""
@@ -1146,8 +1182,13 @@ def call_ajax(request):
                                     and (lower(retweeted_user) not in ({4}) and lower(username) not in ({4}) ) 
                                     and b.query_name = t.query_name and retweeted_user is not null
                             ) ,
+                            base3 as (
+                                select lower(a.to_user) as from_user, lower(b.to_user) as to_user
+                                from base2 a, base2 b
+                                where a.from_user = b.from_user and lower(a.to_user) < lower(b.to_user)
+                            ),
                             sums as (
-                                select distinct from_user from base2 union select distinct to_user from base2
+                                select from_user from base3 union all select to_user from base3
                             ),
                             ids as (
                                 select from_user, count(*) node_size from sums group by from_user
@@ -1159,10 +1200,10 @@ def call_ajax(request):
                                 a.from_user as from_name, id1.id as from,  id1.node_size as from_size, 
                                 a.to_user as to_name,  id2.id as to,  id2.node_size as to_size,  
                                 count(*) as value
-                            from base2 a, ids2 id1, ids2 id2
+                            from base3 a, ids2 id1, ids2 id2
                             where a.from_user = id1.from_user and a.to_user = id2.from_user
                             group by a.from_user, a.to_user, id1.id, id2.id, id1.node_size, id2.node_size 
-                            order by count(*) desc
+                            order by id2.node_size desc
                             limit {3}
                         """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ),engine)
             else:
@@ -1826,17 +1867,33 @@ def call_ajax(request):
                     """.format(source, start_date, end_date, '' if not criteria else criteria, bucket_size),engine)
         
         temp_sample = pd.read_sql_query("""
-                    select distinct
+                    (
+                        select distinct
                         b.tweet_text as original_Tweet, a.tweet_text as processed_tweet, a.tweet_tweet_id, a.created_at, subjectivity, polarity, domain_entities, hashtags, username, mentions, pos, noun_phrases,
                         tweet_retweet_count, type
                     from 
                         df_tweets_processed a, tweet_main_table b
                     where 
-                        (a.tweet_tweet_id = b.tweet_tweet_id or a.tweet_tweet_id = b.retweeted_tweet_id) 
+                        (a.tweet_tweet_id = b.tweet_tweet_id) 
                         and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
                         and date(a.created_at) between '{1}' and '{2}'
                         {3}
-                        limit 100
+                        limit 50
+                    )
+                    union all
+                    (
+                        select distinct
+                        b.tweet_text as original_Tweet, a.tweet_text as processed_tweet, a.tweet_tweet_id, a.created_at, subjectivity, polarity, domain_entities, hashtags, username, mentions, pos, noun_phrases,
+                        tweet_retweet_count, type
+                    from 
+                        df_tweets_processed a, tweet_main_table b
+                    where 
+                        (a.tweet_tweet_id = b.retweeted_tweet_id) 
+                        and a.processor_name in (select name from analyzer_processor_nlp where id in ({0}) )
+                        and date(a.created_at) between '{1}' and '{2}'
+                        {3}
+                        limit 50
+                    )
                     """.format(source, start_date, end_date, '' if not criteria else criteria),engine)
         lst = []
         for index, row in temp_sample.iterrows():
@@ -1848,8 +1905,303 @@ def call_ajax(request):
         
         engine.dispose()
         return JsonResponse({'dist': temp_dist.to_json(orient='records'), 'sample': lst})
+    elif which == 'get_dashboard_info':
+
+        conn = engine.connect()
+        conn.execute("""drop table if exists temp1;
+                                create table temp1 as 
+                        with active as (
+                            select query_name from tracker_tracker a, django_q_schedule b 
+                            where
+                                position(concat('''',a.query_name,'''') in b.kwargs) > 0 
+                                and b.func = 'tracker.tweet_collector.TweetCollector'
+                        ),
+                        base as (
+                            select 
+                            a.query_name,
+                            DATE_TRUNC('minute', key::timestamp) as key_formatted, 
+                            key,
+                            count(*) as total, 
+                            sum(case when type='replied_to' then 1 else 0 end) as replied_to,
+                            sum(case when type='retweeted' then 1 else 0 end) retweeted,
+                            sum(case when type='quoted' then 1 else 0 end) quoted,
+                            sum(case when type is null then 1 else 0 end) regular
+                            from tweet_main_table a, active b
+                            where a.query_name = b.query_name
+                            group by key,key_formatted,a.query_name
+                        ),
+                        base2 as (
+                            select *, row_number() over (order by key desc) as rc
+                            from base
+                        )
+                        select *, case when rc <= 25 then 'next' else 'prev' end as period 
+                        from base2 where rc <= 50
+                        ;
+
+                        drop table if exists temp2;
+
+                        create table temp2 as
+                        (
+                        with base as (
+                            select a.query_name, period, retweeted_user as object, retweeted_text,max(tweet_retweet_count) as retweet_cnt
+                            from tweet_main_table a, temp1 b
+                            where 
+                                a.query_name = b.query_name
+                                and a.key = b.key
+                            group by a.query_name, period, retweeted_user, retweeted_text
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by retweet_cnt desc) rc 
+                            from base
+                        )
+                        select *, 'retweet' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+                        with base as (
+                            select t.query_name, period, split_part(elem, '=',1) as domain, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, split_part(elem, '=',1)
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'domain' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+
+                        (
+                        with base as (
+                            select t.query_name, period, split_part(elem, '=',2) as domain, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, split_part(elem, '=',2)
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'entity' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+
+                        (
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.hashtags, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'hashtag' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'mention' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.annotation_org, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'annotation_org' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.annotation_product, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'annotation_product' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.annotation_persons, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'annotation_persons' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.annotation_place, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'annotation_place' as which from base2
+                        where rc <= 10
+                        )
+                        union all
+                        (
+
+                        with base as (
+                            select t.query_name, period, elem, null, count(*) as total
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.annotation_other, '||')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, elem
+                        ),
+                        base2 as (
+                            select *,row_number() over (partition by period order by total desc) rc 
+                            from base
+                        )
+                        select *, 'annotation_other' as which from base2
+                        where rc <= 10
+                            )
+                            
+                            
+                            union all
+                        (
+
+                            select t.query_name, period, coalesce(type,'regular') as domain, null, count(*) as total, null as rc,
+                            'tweet_pie' as which
+                            from tweet_main_table t, temp1 b,
+                            unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                            where 
+                                t.query_name = b.query_name
+                                and t.key = b.key
+                            group by t.query_name, period, domain
+
+                        );
+
+                        
+                    
+        """)
 
 
+#drop table if exists temp3;
+#                        create table temp3 as 
+#                        select 
+#                            case when polarity <= -0.8 then '1 - Very Negative'
+#                            when polarity <= -0.5 then '2 - Negative'
+#                            when polarity < 0 then '3 - Slightly Negative'
+#                            when polarity = 0 then '4 - Neutral'
+#                            when polarity < 0.5 then '5 - Slightly Positive'
+#                            else '6 - Very Positive' end as severity, count(*)
+#                        from df_tweets_processed a,  temp1 b
+#                        where a.query_name = b.query_name
+#                                and a.key = b.key
+#                        group by severity
+
+        conn.close()
+
+        polarity = pd.read_sql_query("""
+                select 
+                case when polarity <= -0.8 then '1 - Very Negative'
+                when polarity <= -0.5 then '2 - Negative'
+                when polarity < 0 then '3 - Slightly Negative'
+                when polarity = 0 then '4 - Neutral'
+                when polarity < 0.5 then '5 - Slightly Positive'
+                else '6 - Very Positive' end as severity, count(*)
+
+                from df_tweets_processed
+                group by severity
+                order by severity
+        """, engine)
+
+        temp_data = pd.read_sql_query("""select * from temp1""", engine)
+        temp_sample = pd.read_sql_query("""select * from temp2 where rc <= 20""", engine)
+        tweet_pie_prev = pd.read_sql_query("""select * from temp2 where which = 'tweet_pie' and period = 'prev'""", engine)
+        tweet_pie_next = pd.read_sql_query("""select * from temp2 where which = 'tweet_pie' and period = 'next'""", engine)
+       
+ 
+        df = temp_sample.pivot_table('retweet_cnt', ['query_name', 'which', 'object'], 'period')
+
+        df.reset_index( drop=False, inplace=True )
+        df = df.reindex(['query_name', 'which', 'object' , 'retweeted_text', 'prev','next'], axis=1)
+        df = df.fillna(0)
+        df = df.sort_values(['which','next'],ascending=False)
+        print(df)
+        return JsonResponse({'retweet':df[df['which'] == 'retweet'].to_dict(orient='records'),
+                             'mention':df[df['which'] == 'mention'].to_dict(orient='records'),
+                             'hashtag':df[df['which'] == 'hashtag'].to_dict(orient='records'),
+                             'entity':df[df['which'] == 'entity'].to_dict(orient='records'),
+                             'domain':df[df['which'] == 'domain'].to_dict(orient='records'),
+                             'annotation_product':df[df['which'] == 'annotation_product'].to_dict(orient='records'),
+                             'annotation_place':df[df['which'] == 'annotation_place'].to_dict(orient='records'),
+                             'annotation_persons':df[df['which'] == 'annotation_persons'].to_dict(orient='records'),
+                             'annotation_other':df[df['which'] == 'annotation_other'].to_dict(orient='records'),
+                             'annotation_org':df[df['which'] == 'annotation_org'].to_dict(orient='records'),
+                             'trend': temp_data.to_dict(orient='records'),
+                             'tweet_pie_prev': tweet_pie_prev.to_dict(orient='records'),
+                             'tweet_pie_next': tweet_pie_next.to_dict(orient='records')
+                             })
 
 def save_stopword(user, name, sw):
     stopwords_file = '/tmp/' + name + '.pckl'
@@ -2037,3 +2389,4 @@ def get_network_metrics(temp):
     clustering = pd.DataFrame(dd, columns=['label','value'])
 
     return distinct, degree_df, bet_df, eigen, clustering
+

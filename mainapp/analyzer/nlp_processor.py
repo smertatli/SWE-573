@@ -111,7 +111,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 table = pd.read_sql_query("""
                     with base as (
                         select distinct
-                            a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier
+                            a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier, a.query_name, key
                         from
                             tweet_main_table a, tracker_tracker b
                         where
@@ -123,7 +123,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                         union 
 
                         select distinct
-                            a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier
+                            a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier, a.query_name, key
                         from
                             tweet_main_table a, tracker_tracker b
                         where
@@ -132,7 +132,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                             and retweeted_tweet_id is not null
                             and b.id in ({0})
                         group by
-                            a.retweeted_tweet_id, retweeted_text, date(tweet_created_at)
+                            a.retweeted_tweet_id, retweeted_text, date(tweet_created_at), a.query_name, key
                         
                         )
                         select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})

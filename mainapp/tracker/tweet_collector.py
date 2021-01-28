@@ -157,6 +157,30 @@ def insertTweets(main, query_name=''):
         print('from df to db')
         df.to_sql('tweet_main_table', engine, if_exists='append', index=False)
         print('inserted')
+        print('deleting duplicates from entity and domain tables')
+        conn.execute("""
+            DELETE FROM df_annotation_entity a USING (
+            SELECT MIN(ctid) as ctid, entity_id
+                FROM df_annotation_entity 
+                GROUP BY entity_id
+                HAVING COUNT(*) > 1
+            ) b
+            WHERE a.entity_id = b.entity_id 
+            AND a.ctid <> b.ctid
+            ;
+
+            DELETE FROM df_annotation_entity a USING (
+            SELECT MIN(ctid) as ctid, entity_id
+                FROM df_annotation_entity 
+                GROUP BY entity_id
+                HAVING COUNT(*) > 1
+            ) b
+            WHERE a.entity_id = b.entity_id 
+            AND a.ctid <> b.ctid
+            
+            ;
+        """)
+        print('deleted')
     except:
         print('creating')
         conn.execute("""
