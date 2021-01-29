@@ -169,13 +169,13 @@ def insertTweets(main, query_name=''):
             AND a.ctid <> b.ctid
             ;
 
-            DELETE FROM df_annotation_entity a USING (
-            SELECT MIN(ctid) as ctid, entity_id
-                FROM df_annotation_entity 
-                GROUP BY entity_id
+            DELETE FROM df_annotation_domain a USING (
+            SELECT MIN(ctid) as ctid, domain_id
+                FROM df_annotation_domain 
+                GROUP BY domain_id
                 HAVING COUNT(*) > 1
             ) b
-            WHERE a.entity_id = b.entity_id 
+            WHERE a.domain_id = b.domain_id 
             AND a.ctid <> b.ctid
             
             ;

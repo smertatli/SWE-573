@@ -2140,40 +2140,32 @@ def call_ajax(request):
 
                         );
 
+
+                        drop table if exists temp3;
+                        create table temp3 as 
+                        select 
+                            period,
+                            case when polarity <= -0.8 then '6 - Very Negative'
+                            when polarity <= -0.5 then '5 - Negative'
+                            when polarity < 0 then '4 - Slightly Negative'
+                            when polarity = 0 then '3 - Neutral'
+                            when polarity < 0.5 then '2 - Slightly Positive'
+                            else '1 - Very Positive' end as severity, count(*) as total
+                        from df_tweets_processed a,  temp1 b
+                        where a.query_name = b.query_name
+                                and a.key = b.key
+                        group by period, severity
+
                         
                     
         """)
 
 
-#drop table if exists temp3;
-#                        create table temp3 as 
-#                        select 
-#                            case when polarity <= -0.8 then '1 - Very Negative'
-#                            when polarity <= -0.5 then '2 - Negative'
-#                            when polarity < 0 then '3 - Slightly Negative'
-#                            when polarity = 0 then '4 - Neutral'
-#                            when polarity < 0.5 then '5 - Slightly Positive'
-#                            else '6 - Very Positive' end as severity, count(*)
-#                        from df_tweets_processed a,  temp1 b
-#                        where a.query_name = b.query_name
-#                                and a.key = b.key
-#                        group by severity
+
 
         conn.close()
 
-        polarity = pd.read_sql_query("""
-                select 
-                case when polarity <= -0.8 then '1 - Very Negative'
-                when polarity <= -0.5 then '2 - Negative'
-                when polarity < 0 then '3 - Slightly Negative'
-                when polarity = 0 then '4 - Neutral'
-                when polarity < 0.5 then '5 - Slightly Positive'
-                else '6 - Very Positive' end as severity, count(*)
-
-                from df_tweets_processed
-                group by severity
-                order by severity
-        """, engine)
+        polarity = pd.read_sql_query("""select * from temp3""", engine)
 
         temp_data = pd.read_sql_query("""select * from temp1""", engine)
         temp_sample = pd.read_sql_query("""select * from temp2 where rc <= 20""", engine)
@@ -2200,7 +2192,8 @@ def call_ajax(request):
                              'annotation_org':df[df['which'] == 'annotation_org'].to_dict(orient='records'),
                              'trend': temp_data.to_dict(orient='records'),
                              'tweet_pie_prev': tweet_pie_prev.to_dict(orient='records'),
-                             'tweet_pie_next': tweet_pie_next.to_dict(orient='records')
+                             'tweet_pie_next': tweet_pie_next.to_dict(orient='records'),
+                             'polarity': polarity.to_dict(orient='records')
                              })
 
 def save_stopword(user, name, sw):

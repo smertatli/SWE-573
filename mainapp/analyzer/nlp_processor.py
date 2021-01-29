@@ -58,13 +58,14 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
     try:
         now = datetime.datetime.now()
         print('MINUTE: ', str(now.minute))
+        print('new code running...')
         if now.minute % 2 == 0:
             conn = engine.connect()
             
             try:
                 conn.execute("""
                         DELETE FROM df_tweets_processed a USING (
-                        SELECT MIN(ctid) as ctid, processor_name, tweet_tweet_id
+                        SELECT MAX(ctid) as ctid, processor_name, tweet_tweet_id
                             FROM df_tweets_processed 
                             GROUP BY processor_name, tweet_tweet_id 
                             HAVING COUNT(*) > 1
@@ -79,17 +80,20 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
 
         check = pd.read_sql_query("""
                 with base as (
-                    select distinct tweet_tweet_id from tweet_main_table 
+                    select distinct tweet_tweet_id, 0 as retweet 
+                    from tweet_main_table 
                     where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
                     and tweet_text not like 'RT%'
                     union 
-                    select distinct retweeted_tweet_id 
+                    select retweeted_tweet_id, count(*) as retweet
                     from tweet_main_table 
                     where query_name in (select distinct query_name from tracker_tracker where id in ({0})) and retweeted_tweet_id is not null
+                    group by retweeted_tweet_id
                 )
-                select distinct a.tweet_tweet_id
+                select a.tweet_tweet_id
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
-                where b.tweet_tweet_id is null 
+                where b.tweet_tweet_id is null or (retweet > multiplier)
+                order by retweet
                 limit 50000
             """.format(tracker, proc_name), engine)
         id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
@@ -108,6 +112,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 print('KONTROL ', check)
                 print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
             for remainder in range(0,10):
+                print('OFfffffffffffFh')
                 table = pd.read_sql_query("""
                     with base as (
                         select distinct
