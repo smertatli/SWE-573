@@ -59,40 +59,17 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
         now = datetime.datetime.now()
         print('MINUTE: ', str(now.minute))
         print('new code running...')
-        if now.minute % 2 == 0:
-            conn = engine.connect()
-            
-            try:
-                conn.execute("""
-                        DELETE FROM df_tweets_processed a USING (
-                        SELECT MAX(ctid) as ctid, processor_name, tweet_tweet_id
-                            FROM df_tweets_processed 
-                            GROUP BY processor_name, tweet_tweet_id 
-                            HAVING COUNT(*) > 1
-                        ) b
-                        WHERE a.tweet_tweet_id = b.tweet_tweet_id and  a.processor_name = b.processor_name
-                        AND a.ctid <> b.ctid
-                """)
-                print('DELETING DUPLICATES: SUCCESS')
-            except Exception as e:
-                print('DELETING DUPLICATES: ', str(e))
-            conn.close()
+       
 
         check = pd.read_sql_query("""
                 with base as (
                     select distinct tweet_tweet_id, 0 as retweet 
                     from tweet_main_table 
                     where query_name in (select distinct query_name from tracker_tracker where id in ({0}))
-                    and tweet_text not like 'RT%'
-                    union 
-                    select retweeted_tweet_id, count(*) as retweet
-                    from tweet_main_table 
-                    where query_name in (select distinct query_name from tracker_tracker where id in ({0})) and retweeted_tweet_id is not null
-                    group by retweeted_tweet_id
                 )
                 select a.tweet_tweet_id
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
-                where b.tweet_tweet_id is null or (retweet > multiplier)
+                where b.tweet_tweet_id is null
                 order by retweet
                 limit 50000
             """.format(tracker, proc_name), engine)
@@ -113,31 +90,40 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
             for remainder in range(0,10):
                 print('OFfffffffffffFh')
+
+                print("""
+                    with base as (
+                        select distinct
+                            a.tweet_tweet_id, 
+                            case when retweeted_tweet_id is not null then retweeted_text else tweet_text end as tweet_text, 
+                            retweeted_tweet_id,
+                            date(tweet_created_at) as created_at, 
+                            1 as multiplier, 
+                            a.query_name
+                        from
+                            tweet_main_table a, tracker_tracker b
+                        where
+                            a.query_name = b.query_name 
+                            and b.id in ({0})
+                        
+                        )
+                        select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
+                """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ))
+
                 table = pd.read_sql_query("""
                     with base as (
                         select distinct
-                            a.tweet_tweet_id, tweet_text, null as name, date(tweet_created_at) as created_at, 1 as multiplier, a.query_name, key
+                            a.tweet_tweet_id, 
+                            case when retweeted_tweet_id is not null then retweeted_text else tweet_text end as tweet_text, 
+                            retweeted_tweet_id,
+                            date(tweet_created_at) as created_at, 
+                            1 as multiplier, 
+                            a.query_name
                         from
                             tweet_main_table a, tracker_tracker b
                         where
                             a.query_name = b.query_name 
-                        
-                            and tweet_text not like 'RT @%'
                             and b.id in ({0})
-
-                        union 
-
-                        select distinct
-                            a.retweeted_tweet_id, retweeted_text, null as name, date(tweet_created_at) as created_at, count(*) as multiplier, a.query_name, key
-                        from
-                            tweet_main_table a, tracker_tracker b
-                        where
-                            a.query_name = b.query_name 
-                        
-                            and retweeted_tweet_id is not null
-                            and b.id in ({0})
-                        group by
-                            a.retweeted_tweet_id, retweeted_text, date(tweet_created_at), a.query_name, key
                         
                         )
                         select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
@@ -204,16 +190,35 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                     print('corr: ', corrections)
                     table["tweet_text"], table['processor_name'], table['subjectivity'], table['polarity'], table['pos'], table['noun_phrases'] = zip(*table.tweet_text.map(process_tw))
                     
-                    print('OK: ', remainder)
+                    print('OK: yeni', remainder)
 
                     
                     table.to_sql('df_tweets_processed', engine, if_exists='append', index=False)
 
+                
                 else:
                     print('pass', remainder)
                     pass
-    except:
-            pass
+            conn = engine.connect()
+
+            try:
+                print('DELETING DUPLICATES: SUCCESS')
+                conn.execute("""
+                        DELETE FROM df_tweets_processed a USING (
+                        SELECT processor_name, tweet_tweet_id, min(ctid) as ctid
+                            FROM df_tweets_processed 
+                            GROUP BY processor_name, tweet_tweet_id 
+                            HAVING COUNT(*) > 1
+                        ) b
+                        WHERE a.tweet_tweet_id = b.tweet_tweet_id and  a.processor_name = b.processor_name
+                        AND a.ctid <> b.ctid
+                """)
+                print('DELETED DUPLICATES: SUCCESS')
+            except Exception as e:
+                print('DELETING DUPLICATES ERROR: ', str(e))
+            conn.close()
+    except Exception as e:
+            print(str(e))
     engine.dispose()
     
 
