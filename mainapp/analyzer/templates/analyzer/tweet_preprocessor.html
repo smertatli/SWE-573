@@ -260,16 +260,26 @@
               
         </div>
         <div class='row'>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Analyze Selected Processor</button>
            </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 
                   
                     <input type="hidden"  id='dummy' name='dummy'></input>
-                    <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="cancel_processor();">Delete Selected Processors</button>
+                    <button class="btn btn-warning btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="cancel_processor('no');">Cancel Selected Processors</button>
             
               
+            </div>
+
+
+            <div class="col-md-4">
+                
+                  
+              <input type="hidden"  id='dummy' name='dummy'></input>
+              <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="cancel_processor('yes');">Delete Selected Processor(s) and Outputs</button>
+      
+        
             </div>
             
         </div>
@@ -286,7 +296,7 @@
 <div class="col-md-6">
     <div class="card mb-4">
         <div class="card-body">
-            <div class="card-title mb-3"><h1><b>Word Counts</b></h1></div>
+            <div class="card-title mb-3"><h1><b>Word Counts  (Based on random 20% sample)</b></h1></div>
             <table id="word_counts" class="display" cellspacing="0" width="100%" >
                 <thead>
                     <tr>
@@ -315,7 +325,7 @@
 <div class="col-md-6">
     <div class="card mb-4">
         <div class="card-body">
-            <div class="card-title mb-3"><h1><b>Bi-gram Counts</b></h1></div>
+            <div class="card-title mb-3"><h1><b>Bi-gram Counts  (Based on random 20% sample)</b></h1></div>
             <table id="bigrams" class="display" cellspacing="0" width="100%" >
                 <thead>
                     <tr>
@@ -372,6 +382,16 @@
 }
 
 #tweet_length {
+    width: 100%;
+    height: 400px;
+}
+
+#polarity_dist {
+    width: 100%;
+    height: 400px;
+}
+
+#subjectivity_dist {
     width: 100%;
     height: 400px;
 }
@@ -445,7 +465,7 @@
                         'selected': selected
                     }
             }).responseJSON;
-            alert(selected)
+          
             var table_processor = $('#word_counts').DataTable({
                 data: word_counts['word_count'],
                 'destroy': true,
@@ -503,7 +523,7 @@
             var chart = am4core.create("tweet_length", am4charts.XYChart);
             chart.scrollbarX = new am4core.Scrollbar();
             chart.data = eval(word_counts['length_dist'])
-            alert(eval(word_counts['length_dist']))
+       
 
             // Create axes
             var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
@@ -564,12 +584,131 @@
             series.dataFields.category = "funnel";
             series.alignLabels = true;
             series.orientation = "horizontal";
-            series.bottomRatio = 2;
+            series.bottomRatio = 1;
 
             chart.legend = new am4charts.Legend();
             chart.legend.position = "top";
 
            
+
+
+
+
+
+
+
+
+            am4core.useTheme(am4themes_animated);
+            // Themes end
+
+            // Create chart instance
+            var chart = am4core.create("subjectivity_dist", am4charts.XYChart);
+            chart.scrollbarX = new am4core.Scrollbar();
+            chart.data = eval(word_counts['subjectivity_dist'])
+       
+
+            // Create axes
+            var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+            categoryAxis.dataFields.category = "severity";
+            categoryAxis.renderer.grid.template.location = 0;
+            categoryAxis.renderer.minGridDistance = 30;
+            categoryAxis.renderer.labels.template.horizontalCenter = "right";
+            categoryAxis.renderer.labels.template.verticalCenter = "middle";
+            categoryAxis.renderer.labels.template.rotation = 270;
+            categoryAxis.tooltip.disabled = true;
+            categoryAxis.renderer.minHeight = 110;
+
+            var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+            valueAxis.renderer.minWidth = 50;
+
+            // Create series
+            var series = chart.series.push(new am4charts.ColumnSeries());
+            series.sequencedInterpolation = true;
+            series.dataFields.valueY = "total";
+            series.dataFields.categoryX = "severity";
+            series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+            series.columns.template.strokeWidth = 0;
+
+            series.tooltip.pointerOrientation = "vertical";
+
+            series.columns.template.column.cornerRadiusTopLeft = 10;
+            series.columns.template.column.cornerRadiusTopRight = 10;
+            series.columns.template.column.fillOpacity = 0.8;
+
+            // on hover, make corner radiuses bigger
+            var hoverState = series.columns.template.column.states.create("hover");
+            hoverState.properties.cornerRadiusTopLeft = 0;
+            hoverState.properties.cornerRadiusTopRight = 0;
+            hoverState.properties.fillOpacity = 1;
+
+            series.columns.template.adapter.add("fill", function(fill, target) {
+              return chart.colors.getIndex(target.dataItem.index);
+            });
+
+            // Cursor
+            chart.cursor = new am4charts.XYCursor();
+
+
+
+
+
+
+
+
+
+
+
+
+            am4core.useTheme(am4themes_animated);
+            // Themes end
+
+            // Create chart instance
+            var chart = am4core.create("polarity_dist", am4charts.XYChart);
+            chart.scrollbarX = new am4core.Scrollbar();
+            chart.data = eval(word_counts['polarity_dist'])
+       
+
+            // Create axes
+            var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+            categoryAxis.dataFields.category = "severity";
+            categoryAxis.renderer.grid.template.location = 0;
+            categoryAxis.renderer.minGridDistance = 30;
+            categoryAxis.renderer.labels.template.horizontalCenter = "right";
+            categoryAxis.renderer.labels.template.verticalCenter = "middle";
+            categoryAxis.renderer.labels.template.rotation = 270;
+            categoryAxis.tooltip.disabled = true;
+            categoryAxis.renderer.minHeight = 110;
+
+            var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+            valueAxis.renderer.minWidth = 50;
+
+            // Create series
+            var series = chart.series.push(new am4charts.ColumnSeries());
+            series.sequencedInterpolation = true;
+            series.dataFields.valueY = "total";
+            series.dataFields.categoryX = "severity";
+            series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+            series.columns.template.strokeWidth = 0;
+
+            series.tooltip.pointerOrientation = "vertical";
+
+            series.columns.template.column.cornerRadiusTopLeft = 10;
+            series.columns.template.column.cornerRadiusTopRight = 10;
+            series.columns.template.column.fillOpacity = 0.8;
+
+            // on hover, make corner radiuses bigger
+            var hoverState = series.columns.template.column.states.create("hover");
+            hoverState.properties.cornerRadiusTopLeft = 0;
+            hoverState.properties.cornerRadiusTopRight = 0;
+            hoverState.properties.fillOpacity = 1;
+
+            series.columns.template.adapter.add("fill", function(fill, target) {
+              return chart.colors.getIndex(target.dataItem.index);
+            });
+
+            // Cursor
+            chart.cursor = new am4charts.XYCursor();
+            
             
         }
 
@@ -577,7 +716,7 @@
     }
 
 
-    function cancel_processor(){
+    function cancel_processor(to_delete){
        
         selected  = document.getElementById('dummy').value
         var result_code = $.ajax({
@@ -587,38 +726,45 @@
                     dataType: 'json',
                     data: {
                         'which': 'cancel_processor',
-                        'selected': selected
+                        'selected': selected,
+                        'delete': to_delete
                     }
             }).responseJSON;
-        alert(result_code['result'])
 
-        var processors = $.ajax({
-                type: 'POST',
-                async: false,
-                url: '{% url "analyzer:call_ajax" %}',
-                dataType: 'json',
-                data: {
-                    'which': 'get_processors'
-                }
-        }).responseJSON;
+        if(result_code['result'] > ''){
+          alert(result_code['result'])
+        } else {
 
-
-        table_processor = $('#processors').DataTable({
-            data: processors,
-            'destroy': true,
-            'columnDefs': [
-                {
-                    'targets': 0,
-                    'checkboxes': {
-                        'selectRow': true
+              var processors = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "analyzer:call_ajax" %}',
+                    dataType: 'json',
+                    data: {
+                        'which': 'get_processors'
                     }
-                }
-            ],
-            'select': {
-                'style': 'multi'
-            },
-            'order': [[1, 'asc']]
-        });
+              }).responseJSON;
+
+
+              table_processor = $('#processors').DataTable({
+                  data: processors,
+                  'destroy': true,
+                  'columnDefs': [
+                      {
+                          'targets': 0,
+                          'checkboxes': {
+                              'selectRow': true
+                          }
+                      }
+                  ],
+                  'select': {
+                      'style': 'multi'
+                  },
+                  'order': [[1, 'asc']]
+              });
+        }
+
+       
     }
 
     
@@ -1505,29 +1651,50 @@ table.dataTable td {
 </style>
 
 <div class='row'>
-<div class="col-md-6">
-  <div class="card mb-4">
-      <div class="card-body">
-          <div class="card-title mb-3"><h1><b>Buckets by Word Counts After Processing</b></h1></div>
-      <div id="word_count_pie"></div>
+  <div class="col-md-6">
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Buckets by Word Counts After Processing (Full Data)</b></h1></div>
+        <div id="word_count_pie"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="col-md-6">
-  <div class="card mb-4">
-      <div class="card-body">
-          <div class="card-title mb-3"><h1><b>Buckets by Tweet Lengths After Processing</b></h1></div>
-      <div id="tweet_length"></div>
+  <div class="col-md-6">
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="card-title mb-3"><h1><b>Buckets by Tweet Lengths After Processing (Full Data) </b></h1></div>
+        <div id="tweet_length"></div>
+      </div>
     </div>
   </div>
-</div>
-</div>
+  </div>
+
+
+  <div class='row'>
+    <div class="col-md-6">
+      <div class="card mb-4">
+          <div class="card-body">
+              <div class="card-title mb-3"><h1><b>Polarity Distributions (-1: most negative, 1:most positive) (Full Data)</b></h1></div>
+          <div id="polarity_dist"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="card mb-4">
+          <div class="card-body">
+              <div class="card-title mb-3"><h1><b>Subjectivity Distributions (0: most objective, 1:most subjective) (Full Data)</b></h1></div>
+          <div id="subjectivity_dist"></div>
+        </div>
+      </div>
+    </div>
+    </div>
 
 <div class="col-md-12">
   <div class="card mb-4">
       <div class="card-body">
-          <div class="card-title mb-3"><h1><b>Buckets by Tweet Lengths After Processing</b></h1></div>
+          <div class="card-title mb-3"><h1><b>Counts From Total Collected to Retweet Compressed (Full Data)</b></h1></div>
       <div id="funnel"></div>
     </div>
   </div>

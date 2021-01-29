@@ -454,7 +454,7 @@ def call_ajax(request):
                           where query_name in (select query_name from tracker_tracker where id in ({0}))""".format(tracker_ids['tracker'][0]), engine)
         total = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
-                SELECT sum(multiplier) as total_processed, count(*) as total_compressed, {1} as total_collected
+                SELECT count(*) as total_processed, count(distinct coalesce(retweeted_tweet_id, tweet_tweet_id)) as total_compressed, {1} as total_collected
                 FROM   df_tweets_processed t, base b
                 where t.processor_name = b.name  
                 """.format(ids, total_count['tot'][0] if not total_count.empty else total_count), engine)
@@ -490,6 +490,27 @@ def call_ajax(request):
                 order by 3 desc
                 limit 1000
                 """.format(ids, rand), engine)
+
+        polarity_dist = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                select 
+                ((coalesce(polarity,0)*10)::int) /10::float as severity, count(*) as total
+                FROM   df_tweets_processed t, base b
+                where t.processor_name = b.name 
+                group by severity
+                order by severity
+                """.format(ids), engine)
+
+        subjectivity_dist = pd.read_sql_query("""
+                with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
+                select 
+                ((subjectivity*10)::int) /10::float as severity, count(*) as total
+                FROM   df_tweets_processed t, base b
+                where t.processor_name = b.name 
+                group by severity
+                order by severity
+                """.format(ids), engine)
+
         print('calculating bigram freqs')
         bigram = pd.read_sql_query("""
                 with proc as (select distinct name from analyzer_processor_nlp where id in ({0})),
@@ -517,7 +538,9 @@ def call_ajax(request):
         engine.dispose()
         return JsonResponse({'word_count': word_arr, 'bigram': bigram_arr, 'total': total.to_dict(orient='records'), 
                              'word_cnt_dist':word_cnt_dist.to_dict(orient='records'),
-                             'length_dist': length_dist.to_dict(orient='records')})  
+                             'length_dist': length_dist.to_dict(orient='records'),
+                             'polarity_dist': polarity_dist.to_dict(orient='records'),
+                             'subjectivity_dist': subjectivity_dist.to_dict(orient='records')})  
        
     elif which == 'get_images':
         temp = pd.read_sql_query("""
@@ -1789,16 +1812,68 @@ def call_ajax(request):
         
     
     elif which == 'cancel_processor':
-        ids = request.POST.get('selected')
+        processors = request.POST.get('selected')
+        delete = request.POST.get('delete')
+        engine = create_engine(db_connection_url)
+        temp_all = pd.read_sql_query("""
+            select 
+                a.id, a.name, 
+                b.id as schedule_id, concat(a.name,'(id=',a.id::varchar(255),')') as processor_name, coalesce(repeats,0) as repeat, a.user_id
+            from analyzer_processor_nlp a
+            left join django_q_schedule b on position(concat('''',a.name,'''') in b.kwargs) > 0  and b.func = 'analyzer.nlp_processor.Processor' 
+            where a.id in ({0}) 
+            """.format(processors), engine)
+        print(temp_all, processors)
+
+        successes = ''
+        message = ''
+        message_deleted = ''
+        to_delete_id = ''
+        to_delete_name = ''
+
+        for index, row in temp_all.iterrows():
+            if(row['user_id'] != request.user.id):
+                message = message + '\n ' + row['processor_name'] + ': You are not the owner of this processor.'.format(request.user)
+            elif(row['repeat'] == 0):
+                message = message + '\n' + row['processor_name'] + ': This task is already cancelled.'
+                if delete == 'yes':
+                    message_deleted = message_deleted + '\n' + row['processor_name'] + ': Successfully deleted.'
+                    to_delete_id = to_delete_id + str(row['id']) +','
+                    to_delete_name = to_delete_name + str(row['name']) +','
+            else:
+                message = message + '\n' + row['processor_name'] + ': Successfully cancelled.'
+                successes = successes + str(row['schedule_id']) +','
+                if delete == 'yes':
+                    message_deleted = message_deleted + '\n' + row['processor_name'] + ': Successfully deleted.'
+                    to_delete_id = to_delete_id + str(row['id']) +','
+                    to_delete_name = to_delete_name + str(row['name']) +','
+            
         conn = engine.connect()
-        try:
-            print('DELETING ', ids)
-            conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(ids))
-            conn.close()
-            return JsonResponse({'result':'OK'})
-        except Exception as e:
-            conn.close()
-            return JsonResponse({'result':'NOK'})
+        if(successes):
+            print('DELETING processor schedule: ', successes[:-1])
+            #conn.execute("DELETE from django_q_schedule where id in ({0})".format(successes[:-1]))
+            #conn.close()
+        
+        if(to_delete_id):
+            try:
+                print('DELETING processor and its data: ', to_delete_id + ':::'+to_delete_name)
+                #conn.execute("DELETE from analyzer_processor_nlp where id in ({0})".format(to_delete_id))
+                #conn.execute("DELETE from df_tweets_processed where processor_name in ({0})".format(to_delete_name))
+                #conn.close()
+                #return JsonResponse({'result':'Successfully cancelled.'})
+            except Exception as e:
+                #conn.close()
+                return JsonResponse({'result':'Unsuccessful. Please contact admin about this issue.' })
+        
+        engine.dispose()
+
+        return JsonResponse({'result': message + '\n' + message_deleted})
+
+
+
+
+
+        
     
     elif which == 'get_sentiments_and_tweets':
         engine = create_engine(db_connection_url)
@@ -1906,7 +1981,7 @@ def call_ajax(request):
         engine.dispose()
         return JsonResponse({'dist': temp_dist.to_json(orient='records'), 'sample': lst})
     elif which == 'get_dashboard_info':
-
+        print('dashboard info')
         conn = engine.connect()
         conn.execute("""drop table if exists temp1;
                                 create table temp1 as 
@@ -2151,9 +2226,9 @@ def call_ajax(request):
                             when polarity = 0 then '3 - Neutral'
                             when polarity < 0.5 then '2 - Slightly Positive'
                             else '1 - Very Positive' end as severity, count(*) as total
-                        from df_tweets_processed a,  temp1 b
-                        where a.query_name = b.query_name
-                                and a.key = b.key
+                        from df_tweets_processed a,  temp1 b, tweet_main_table c
+                        where a.query_name = b.query_name and a.tweet_tweet_id = c.tweet_tweet_id
+                                and b.key = c.key
                         group by period, severity
 
                         
