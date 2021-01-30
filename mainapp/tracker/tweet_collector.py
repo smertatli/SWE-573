@@ -15,8 +15,11 @@ def TweetCollector(query, fetch_size, query_name, manual=True):
     if not manual:
         json_response = twitter_api.gettw(query, fetch_size)
         main = tweet_processor.get_all_info(json_response['data'], json_response['includes'])
-        insertTweets(main, query_name)
-    
+        try:
+            print('inserting')
+            insertTweets(main, query_name)
+        except Exception as e:
+            print('INSERT ERROR: ' + str(e))
 
 
 def insertTweets(main, query_name=''):
@@ -64,7 +67,7 @@ def insertTweets(main, query_name=''):
     engine = create_engine(db_connection_url)
 
     print('*********************************************** INSERTED ***********************************************', df_media.columns)
-
+    print('QUERY: ', query_name)
     def_media =  df_media.replace(r'^\s*$', np.nan, regex=True)
     print('SHAPE: ', df_merge.shape)
             

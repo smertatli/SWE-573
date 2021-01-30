@@ -20,6 +20,7 @@ urlpatterns = [
     path('tweet_media_analyzer/', views.tweet_media_analyzer, name='tweet_media_analyzer'),
     path('comparisor/', views.comparisor, name='comparisor'),
     path('deepdiver/', views.deepdiver, name='deepdiver'),
+    path('summarizer/', views.summarizer, name='summarizer'),
     
 
     

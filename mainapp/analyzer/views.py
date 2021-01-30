@@ -360,7 +360,7 @@ def call_ajax(request):
         table = pd.read_sql_query("""
             select a.id, a.name, a.tracker, a.stopwords, a.corrections, a.preproc, a.nlp, case when b.id is not null then 'Active' else 'Inactive' end status
             from analyzer_processor_nlp a left join django_q_schedule b on position(a.name in b.kwargs) > 0 and coalesce(repeats,0) <> 0
-            where a.user_id ='{0}' 
+             
             """.format(request.user.id), engine)
         procs = []
         for index, row in table.iterrows():
@@ -446,22 +446,25 @@ def call_ajax(request):
         import random
         ids = request.POST.get('selected')
         rand = random.randint(0,4)
-        print('selecting for:', str(rand))
+        print('selecting for:', str(rand), ids)
         tracker_ids = pd.read_sql_query('select tracker from analyzer_processor_nlp where id in ({0})'.format(ids), engine)
         total_count = 0
+        print('second....')
         if not tracker_ids.empty:
             total_count = pd.read_sql_query("""select count(*) tot from tweet_main_table 
                           where query_name in (select query_name from tracker_tracker where id in ({0}))""".format(tracker_ids['tracker'][0]), engine)
+        print('third....')
         total = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT count(*) as total_processed, count(distinct coalesce(retweeted_tweet_id, tweet_tweet_id)) as total_compressed, {1} as total_collected
                 FROM   df_tweets_processed t, base b
                 where t.processor_name = b.name  
                 """.format(ids, total_count['tot'][0] if not total_count.empty else total_count), engine)
+        print('fourth....')
         if not total.empty:
             total = total.melt(var_name="funnel", value_name="count")
             total = total.sort_values(by=['count'], ascending=False)
-
+        print('6th....')
         word_cnt_dist = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT ((array_length(regexp_split_to_array(tweet_text, '\s+'), 1))::float / 5)::int*5 as bucket, count(*) as total
@@ -470,7 +473,7 @@ def call_ajax(request):
                 group by bucket
                 order by bucket
                 """.format(ids, rand), engine)
-
+        print('7th....')
         length_dist = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT (length(tweet_text)::float / 10)::int*10 as bucket, count(*) as total
@@ -479,18 +482,18 @@ def call_ajax(request):
                 group by bucket
                 order by bucket
                 """.format(ids), engine)
-
+        print('8th....')
         word = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 SELECT b.name, elem,count(distinct tweet_Tweet_id) as freq
                 FROM   df_tweets_processed t, base b,
                 unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)  
-                where t.processor_name = b.name and elem > '' and tweet_tweet_id::bigint % 5 = {1} 
+                where t.processor_name = b.name and elem > '' and tweet_tweet_id::bigint %% 5 = {1} 
                 group by b.name, elem
                 order by 3 desc
                 limit 1000
                 """.format(ids, rand), engine)
-
+        print('9th....')
         polarity_dist = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 select 
@@ -500,7 +503,7 @@ def call_ajax(request):
                 group by severity
                 order by severity
                 """.format(ids), engine)
-
+        print('10th....')
         subjectivity_dist = pd.read_sql_query("""
                 with base as (select distinct name from analyzer_processor_nlp where id in ({0}))
                 select 
@@ -510,7 +513,7 @@ def call_ajax(request):
                 group by severity
                 order by severity
                 """.format(ids), engine)
-
+        print('11th....')
         print('calculating bigram freqs')
         bigram = pd.read_sql_query("""
                 with proc as (select distinct name from analyzer_processor_nlp where id in ({0})),
@@ -518,7 +521,7 @@ def call_ajax(request):
                     SELECT b.name,tweet_Tweet_id, elem, nr, lag(elem) over (partition by tweet_tweet_id order by nr) as elem2
                     FROM   df_tweets_processed t,  proc b,
                     unnest(string_to_array(t.tweet_text, ' ')) WITH ORDINALITY a(elem, nr)
-                    where t.processor_name = b.name and tweet_tweet_id::bigint % 5 = {1} 
+                    where t.processor_name = b.name and tweet_tweet_id::bigint %% 5 = {1} 
                 )
                 select name, concat(elem, ' ', elem2) as bigram, count(distinct tweet_Tweet_id) as freq 
                 from base
@@ -527,15 +530,16 @@ def call_ajax(request):
                 order by count(distinct tweet_Tweet_id) desc 
                 limit 1000
                 """.format(ids, rand), engine)
-
+        print('12th....')
         word_arr = []
         for index, row in word.iterrows():
             word_arr.append([row[0], row[1], row[2]]) 
-
+        print('13th....')
         bigram_arr = []
         for index, row in bigram.iterrows():
             bigram_arr.append([row[0], row[1], row[2]]) 
         engine.dispose()
+        print('14th....')
         return JsonResponse({'word_count': word_arr, 'bigram': bigram_arr, 'total': total.to_dict(orient='records'), 
                              'word_cnt_dist':word_cnt_dist.to_dict(orient='records'),
                              'length_dist': length_dist.to_dict(orient='records'),
@@ -2271,6 +2275,224 @@ def call_ajax(request):
                              'polarity': polarity.to_dict(orient='records')
                              })
 
+    elif which == 'perform_summarizer':
+        import uuid
+        temp_table_name = 'tmp_' + uuid.uuid4().hex
+        print('temporary table name: ', temp_table_name)
+        engine = create_engine(db_connection_url)
+        source = request.POST.get('source')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        domain = request.POST.get('domain')
+        entity = request.POST.get('entity')
+        hashtag = request.POST.get('hashtag')
+        user = request.POST.get('user')
+        mention = request.POST.get('mention')
+        phrase = request.POST.get('phrase')
+        bucket_size = request.POST.get('bucket_size')
+
+        conn = engine.connect()
+        try:
+            conn.execute("""drop table if exists {3};
+                            create table {3} as
+                            select distinct a.tweet_tweet_id
+                            from tweet_main_table a, df_tweets_processed b, analyzer_processor_nlp c
+                            where 
+                                a.tweet_tweet_id = b.tweet_tweet_id 
+                                and c.name = b.processor_name
+                                and c.id in ({0})
+                                and date(a.tweet_created_at) between '{1}' and '{2}'
+                        """.format(source, start_date, end_date, temp_table_name))
+
+
+            severity = pd.read_sql_query("""
+                    select 
+                    ((coalesce(polarity,0)*10)::int) /10::float as severity, count(*) as total
+                    FROM   df_tweets_processed t, {0} b 
+                    where t.tweet_tweet_id = b.tweet_tweet_id 
+                    group by severity
+                    order by severity
+                    """.format(temp_table_name), engine)
+            subjectivity = pd.read_sql_query("""
+                    select 
+                    ((coalesce(subjectivity,0)*10)::int) /10::float as severity, count(*) as total
+                    FROM   df_tweets_processed t, {0} b 
+                    where t.tweet_tweet_id = b.tweet_tweet_id 
+                    group by severity
+                    order by severity
+                    """.format(temp_table_name), engine)
+
+            tweet_type = pd.read_sql_query("""
+                    select coalesce(type,'regular') as domain, count(*) as total
+                    from tweet_main_table t, {0} b
+                    where 
+                        t.tweet_tweet_id = b.tweet_tweet_id
+                    group by domain
+                    """.format(temp_table_name), engine)
+
+            domains = pd.read_sql_query("""
+                    select split_part(elem,'=',1) as domain, count(*) as total
+                    from tweet_main_table t, {0} b,
+                    unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                    where 
+                        t.tweet_tweet_id = b.tweet_tweet_id
+                    group by domain
+                    order by count(*) desc
+                    """.format(temp_table_name), engine)
+            domain_polarity = pd.read_sql_query("""
+                    select 
+                    split_part(elem,'=',1) as domain, 
+                    case when polarity <= -0.8 then 'very_negative'
+                    when polarity <= -0.5 then 'negative'
+                    when polarity < 0 then 'slightly_negative'
+                    when polarity = 0 then 'neutral'
+                    when polarity < 0.5 then 'slightly_positive'
+                    when polarity < 0.8 then 'positive'
+                    else 'very_positive' end as severity, 
+                    100 * (sum(case when polarity < 0 then -1 else 1 end)/sum(count(*)) over (partition by split_part(elem,'=',1))) as percent
+                    from tweet_main_table t, df_tweets_processed b, {0} c,
+                    unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                    where 
+                    t.tweet_tweet_id = b.tweet_tweet_id and b.tweet_tweet_id = c.tweet_tweet_id
+                    group by domain, severity
+                    order by domain, count(*) desc
+                    """.format(temp_table_name),engine)
+            
+            domain_polarity = domain_polarity.pivot_table('percent', ['domain'], 'severity')
+            domain_polarity.reset_index( drop=False, inplace=True )
+            domain_polarity = domain_polarity.reindex(['domain', 'very_negative', 'negative' , 'slightly_negative', 'neutral','slightly_positive', 'positive', 'very_positive'], axis=1)
+            domain_polarity = domain_polarity.fillna(0)
+            print(domain_polarity)
+
+
+
+            retweeted_collected = pd.read_sql_query("""
+                     select 
+                        ref_username as level,
+                        count(*) as total, 
+                        max(tweet_retweet_count),
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from tweet_main_table a, {0} b
+                    where type ='retweeted' and a.tweet_tweet_id = b.tweet_tweet_id
+                    group by level 
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+
+            retweeted_global = pd.read_sql_query("""
+                      select 
+                        ref_username as level,
+                        sum(tweet_retweet_count) as total, 
+                        max(tweet_retweet_count),
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from tweet_main_table a, {0} b
+                    where type ='retweeted' and a.tweet_tweet_id = b.tweet_tweet_id
+                    group by level 
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+
+            replied_to = pd.read_sql_query("""
+                      select 
+                        ref_username as level,
+                        count(*) as total, 
+                        max(tweet_retweet_count),
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from tweet_main_table a, {0} b
+                    where type ='replied_to' and a.tweet_tweet_id = b.tweet_tweet_id
+                    group by level 
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+            quoted = pd.read_sql_query("""
+                     select 
+                        ref_username as level,
+                        count(*) as total, 
+                        max(tweet_retweet_count),
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from tweet_main_table a, {0} b
+                    where type ='quoted' and a.tweet_tweet_id = b.tweet_tweet_id
+                    group by level 
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+            entities = pd.read_sql_query("""
+                     select 
+                        lower(split_part(elem, '=', 2)) as level,
+                        count(*) as total, 
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from
+                        tweet_main_table t, {0} b,
+                        unnest(string_to_array(t.domain_entities, ' || ')) WITH ORDINALITY a(elem, nr)
+                    where t.tweet_tweet_id = b.tweet_tweet_id
+                    group by lower(split_part(elem, '=', 2))
+                    order by 2 desc 
+                    limit 50
+                    """.format(temp_table_name),engine)
+
+            mentions = pd.read_sql_query("""
+                    select 
+                        lower(elem) as level,
+                        count(*) as total, 
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from
+                        tweet_main_table t,  {0} b,
+                        unnest(string_to_array(t.mentions, '||')) WITH ORDINALITY a(elem, nr)
+                    where  t.tweet_tweet_id = b.tweet_tweet_id
+                    group by lower(elem)
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+            hashtags = pd.read_sql_query("""
+                     select 
+                        lower(elem) as level,
+                        count(*) as total, 
+                        max(retweeted_text) as text,
+                        max(retweeted_tweet_id) as tweet_id
+                    from
+                        tweet_main_table t,  {0} b,
+                        unnest(string_to_array(t.hashtags, '||')) WITH ORDINALITY a(elem, nr)
+                    where  t.tweet_tweet_id = b.tweet_tweet_id
+                    group by lower(elem)
+                    order by 2 desc 
+                    limit 20
+                    """.format(temp_table_name),engine)
+
+
+
+        except Exception as e:
+            print('error: dropping ', temp_table_name, str(e))
+            conn.execute('drop table if exists {0}'.format(temp_table_name))
+
+        print('dropping ', temp_table_name)
+        conn.execute('drop table if exists {0}'.format(temp_table_name))
+        conn.close()
+        print(severity)
+        return JsonResponse({'severity': severity.to_dict(orient='records'),
+                             'subjectivity': subjectivity.to_dict(orient='records'),
+                             'tweet_type': tweet_type.to_dict(orient='records'),
+                             'domains': domains.to_dict(orient='records'),
+                             'domain_polarity': domain_polarity.to_dict(orient='records'),
+                             'retweeted_collected': retweeted_collected.to_dict(orient='records'),
+                             'retweeted_global': retweeted_global.to_dict(orient='records'),
+                             'replied_to': replied_to.to_dict(orient='records'),
+                             'quoted': quoted.to_dict(orient='records'),
+                             'entities': entities.to_dict(orient='records'),
+                             'mentions': mentions.to_dict(orient='records'),
+                             'hashtags': hashtags.to_dict(orient='records')})
+
+
 def save_stopword(user, name, sw):
     stopwords_file = '/tmp/' + name + '.pckl'
     engine = create_engine(db_connection_url)
@@ -2408,6 +2630,9 @@ def comparisor(request):
 
 def deepdiver(request):
     return render(request, 'analyzer/deepdiver.html')
+
+def summarizer(request):
+    return render(request, 'analyzer/summarizer.html')
 
 
 def get_network_metrics(temp):

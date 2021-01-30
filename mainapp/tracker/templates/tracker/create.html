@@ -221,23 +221,24 @@
             
       </div>
       <div class='row'>
-          <div class="col-md-6">
+          <div class="col-md-4">
+            <input type="hidden"  id='dummy' name='dummy'></input>
               <button class="btn btn-primary btn-block mb-3" id="alert-success" type="submit" onclick="analyze_processor();">Get Counts for Selected Track(s)</button>
          </div>
-          <div class="col-md-6">
-            
-              <form action="{% url 'tracker:create_track' %}" method="POST">
-                  {% csrf_token %}
-                   <input type="hidden"  id='dummy' name='dummy'></input>
-                  <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_processors();">Cancel Selected Track(s)</button>
-                   
-              </form>
-             
+          <div class="col-md-4">
+              
+            <button class="btn btn-warning btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track('no');">Cancel Selected Track(s)</button>
           </div>
+      
+          <div class="col-md-4">
+            
+            <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track('yes');">Delete Selected Track(s)</button>
+          </div>
+             
+        </div>
           
       </div>
   </div>
-  {{ status|safe}}
 </div>
 
 
@@ -289,7 +290,7 @@
   // Themes begin
   am4core.useTheme(am4themes_animated);
   // Themes end
-  
+  alert(document.getElementById('dummy').value)
   _data =  $.ajax({
                     type: 'POST',
                     async: false,
@@ -605,6 +606,7 @@
                 
     var table_processor = $('#tracker_table').DataTable({
         data: tracks,
+        'destroy': true,
         dom: 'Bfrtip',
         'columnDefs': [
           {
@@ -675,6 +677,54 @@
       document.getElementById("date_end").innerHTML = end.format('YYYY-MM-DD')
     });
   });
+
+
+  function stop_track(to_delete){
+        selected  = document.getElementById('dummy').value
+        var result_code = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '{% url "tracker:cancel_track" %}',
+                    dataType: 'json',
+                    data: {
+                        'selected': selected,
+                        'delete': to_delete
+                    }
+            }).responseJSON;
+
+        if(result_code['result'] > ''){
+          alert(result_code['result'])
+        } else {
+
+              var processors = $.ajax({
+                    type: 'POST',
+                    async: false,
+                    url: '',
+                    dataType: 'json',
+                    data: {
+                        'which': 'get_tracks'
+                    }
+              }).responseJSON;
+
+
+              table_processor = $('#processors').DataTable({
+                  data: processors,
+                  'destroy': true,
+                  'columnDefs': [
+                      {
+                          'targets': 0,
+                          'checkboxes': {
+                              'selectRow': true
+                          }
+                      }
+                  ],
+                  'select': {
+                      'style': 'multi'
+                  },
+                  'order': [[1, 'asc']]
+              });
+        }
+  }
   </script>
 
 

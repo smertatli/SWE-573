@@ -29,9 +29,14 @@ settings.DATABASES['default']['NAME'],
 
 @login_required
 def create_track(request):
-    
+    return render(request, 'tracker/create.html', {'status': 'ignore'})
+
+@csrf_exempt
+def cancel_track(request):
     if request.method == 'POST':
-        trackers = request.POST.get('dummy')
+        trackers = request.POST.get('selected')
+        to_delete = request.POST.get('to_delete')
+        
         engine = create_engine(db_connection_url)
         temp_all = pd.read_sql_query("""
             select a.id, b.id as schedule_id, u.username, concat(query_name,'(id=',a.id::varchar(255),')') as query_name, query, frequency_level1, frequency_level2, fetch_size,

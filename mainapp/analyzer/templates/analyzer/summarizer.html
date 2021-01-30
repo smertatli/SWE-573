@@ -1,0 +1,818 @@
+{% extends 'main.html' %} 
+
+{% load static %} 
+
+
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_arrows.min.css' %}"/> 
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_circles.min.css' %}" />
+<link rel="stylesheet" href="{% static 'dist-assets/css/plugins/smart.wizard/smart_wizard_theme_dots.min.css' %}" />
+
+
+{% csrf_token %} 
+
+
+<div class="col-md-12" >
+    <div class="card mb-4" >
+        <div class="card-body" >
+
+            <!--  SmartWizard html -->
+            <div id="smartwizard" class="sw-main sw-theme-default" >
+                <ul class="nav nav-tabs step-anchor">
+                    <li class="nav-item active"><a href="#step-1" class="nav-link">Step 1<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-2" class="nav-link">Step 2<br><small>This is step description</small></a></li>
+                    <li class="nav-item"><a href="#step-3" class="nav-link">Step 3<br><small>This is step description</small></a></li>
+                   
+                </ul>
+                <div>
+                    <div id="step-1">
+                        <h3 class="border-bottom border-gray pb-2">Select a data source below</h3>
+                            <table id="source_1" class="display" cellspacing="0" width="100%" >
+                                <thead>
+                                   <tr>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
+                                   </tr>
+                                </thead>
+                                <tfoot>
+                                   <tr>
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>Tracker</th>
+                                        <th>Stopwords</th>
+                                        <th>Corrections</th>
+                                        <th>Preproc</th>
+                                        <th>NLP</th>
+                                        <th>Status</th>
+                                   </tr>
+                                </tfoot>
+                             </table>
+                    </div>
+                    <div id="step-2" >
+                        <h3 class="border-bottom border-gray pb-2">Step 2 Content</h3>
+                         <button   onclick='step_first();'>Get collected dates</button>
+                         <select name="date_start" id="selectStartDate1"></select>
+                         <select name="date_end" id="selectEndDate1"></select>
+                    </div>
+                    <div id="step-3"  >
+                        <div id='row' style='display: inline-block; width: 100%; '>
+                        <b>Including these domain(s):</b>
+                        <textarea rows="1" cols="100" id='domain'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these entity(s):
+                            <textarea rows="1" cols="100" id='entity'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these hashtag(s):
+                            <textarea rows="1" cols="100" id='hashtag'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these user(s):
+                            <textarea rows="1" cols="100" id='user'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these mentions(s):
+                            <textarea rows="1" cols="100" id='mention'></textarea>
+                        </div>
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Including these phrase(s):
+                            <textarea rows="1" cols="100" id='phrase'></textarea>
+                        </div>
+
+                        <div id='row' style='display: inline-block; width: 100; '>
+                            Bucket Size for sentiment score histogram(s):
+                            <textarea rows="1" cols="10" id='bucket_size'></textarea>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block mb-3" id="alert-success" type="button" onclick="summarize();">Analyze Sentiments, Polarity, and Show Tweets</button>
+        </div>
+        
+    </div>
+</div>
+
+
+
+
+
+
+<script src="{% static 'dist-assets/js/plugins/jquery.smartWizard.min.js' %}"></script>
+<script src="{% static 'dist-assets/js/scripts/smart.wizard.script.min.js' %}"></script>
+
+
+
+
+
+
+
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+<script type="text/javascript" src="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/js/dataTables.checkboxes.min.js"></script>
+<link type="text/css" href="//gyrocode.github.io/jquery-datatables-checkboxes/1.2.12/css/dataTables.checkboxes.css" rel="stylesheet" />
+
+
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.colVis.min.js"></script>
+<link href="https://cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css" rel="stylesheet" />
+
+
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+<script>
+
+
+var global_data;
+var processors = $.ajax({
+    type: 'POST',
+    async: false,
+    url: '{% url "analyzer:call_ajax" %}',
+    dataType: 'json',
+    data: {
+        'which': 'get_processors'
+    }
+}).responseJSON;
+
+
+var processors1 = $('#source_1').DataTable({
+    data: processors,
+
+    'columnDefs': [
+        {
+            'targets': 0,
+            'checkboxes': {
+                'selectRow': true
+            }
+        }
+    ],
+    'select': {
+        'style': 'multi'
+    },
+    'order': [[1, 'asc']],
+    'columns': [
+            null,
+            null,
+            null,
+            null,
+            {"visible": false},
+            {"visible": false},
+            {"visible": false},
+            null
+        ]
+});
+
+
+
+
+
+function step_first(){
+    var rows_selected = processors1.column(0).checkboxes.selected();
+    
+    // Iterate over all selected checkboxes
+    if(rows_selected.length > 0){
+        var arr = []
+        $.each(rows_selected, function(index, rowId){arr.push(rowId)});
+        
+        var dates = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {'which':'get_processor_dates',
+                    'processors': arr.toString()
+                    }
+            
+        }).responseJSON;
+            
+
+        var start_date = document.getElementById("selectStartDate1"); 
+        var end_date = document.getElementById("selectEndDate1"); 
+
+        for (i = start_date.length-1; i >= 0; i--) {
+            start_date.options[i] = null;
+            end_date.options[i] = null;
+            }
+
+        $.each(dates['dates'], function(i, p) {
+            var el = document.createElement("option");
+            el.textContent = p;
+            el.value = p;
+            start_date.appendChild(el);
+
+        });
+
+        $.each(dates['dates'], function(i, p) {
+            var el = document.createElement("option");
+            el.textContent = p;
+            el.value = p;
+            end_date.appendChild(el);
+
+        });
+    } else {
+        alert('Please select a data source first!');
+    }
+    
+}
+
+
+
+
+
+
+function summarize(){
+    
+    var processor_selected1 = processors1.column(0).checkboxes.selected();
+    
+
+    var arr = [];
+    
+
+    $.each(processor_selected1, function(index, rowId){arr.push(rowId)});
+        
+
+    var start_date = document.getElementById("selectStartDate1").value; 
+    var end_date = document.getElementById("selectEndDate1").value; 
+    var domain = document.getElementById("domain").value; 
+    var entity = document.getElementById("entity").value; 
+    var user = document.getElementById("user").value; 
+    var hashtag = document.getElementById("hashtag").value; 
+    var mention = document.getElementById("mention").value; 
+    var phrase = document.getElementById("phrase").value; 
+    var bucket_size = document.getElementById("bucket_size").value; 
+
+
+    var summary_data = $.ajax({
+            type: 'POST',
+            async: false,
+            url: '{% url "analyzer:call_ajax" %}',
+            dataType: 'json',
+            data: {'which':'perform_summarizer',
+                    'source': arr.toString(),
+                    'start_date':start_date,
+                    'end_date':end_date,
+                    'domain':domain ,
+                    'entity':entity ,
+                    'user': user,
+                    'hashtag':hashtag ,
+                    'mention':mention ,
+                    'phrase':phrase,
+                    'bucket_size': bucket_size
+                    }
+            
+        }).responseJSON;
+    
+ 
+
+
+    am4core.useTheme(am4themes_animated);
+            // Themes end
+
+    // Create chart instance
+    var chart = am4core.create("polarity_dist", am4charts.XYChart);
+    chart.scrollbarX = new am4core.Scrollbar();
+    chart.data = eval(summary_data['severity'])
+
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "severity";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.renderer.labels.template.horizontalCenter = "right";
+    categoryAxis.renderer.labels.template.verticalCenter = "middle";
+    categoryAxis.renderer.labels.template.rotation = 270;
+    categoryAxis.tooltip.disabled = true;
+    categoryAxis.renderer.minHeight = 110;
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.minWidth = 50;
+
+    // Create series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.sequencedInterpolation = true;
+    series.dataFields.valueY = "total";
+    series.dataFields.categoryX = "severity";
+    series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+    series.columns.template.strokeWidth = 0;
+
+    series.tooltip.pointerOrientation = "vertical";
+
+    series.columns.template.column.cornerRadiusTopLeft = 10;
+    series.columns.template.column.cornerRadiusTopRight = 10;
+    series.columns.template.column.fillOpacity = 0.8;
+
+    // on hover, make corner radiuses bigger
+    var hoverState = series.columns.template.column.states.create("hover");
+    hoverState.properties.cornerRadiusTopLeft = 0;
+    hoverState.properties.cornerRadiusTopRight = 0;
+    hoverState.properties.fillOpacity = 1;
+
+    series.columns.template.adapter.add("fill", function(fill, target) {
+        return chart.colors.getIndex(target.dataItem.index);
+    });
+
+    // Cursor
+    chart.cursor = new am4charts.XYCursor();
+
+
+
+
+
+    am4core.useTheme(am4themes_animated);
+            // Themes end
+
+    // Create chart instance
+    var chart = am4core.create("subjectivity_dist", am4charts.XYChart);
+    chart.scrollbarX = new am4core.Scrollbar();
+    chart.data = eval(summary_data['subjectivity'])
+
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "severity";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.renderer.labels.template.horizontalCenter = "right";
+    categoryAxis.renderer.labels.template.verticalCenter = "middle";
+    categoryAxis.renderer.labels.template.rotation = 270;
+    categoryAxis.tooltip.disabled = true;
+    categoryAxis.renderer.minHeight = 110;
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.minWidth = 50;
+
+    // Create series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.sequencedInterpolation = true;
+    series.dataFields.valueY = "total";
+    series.dataFields.categoryX = "severity";
+    series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+    series.columns.template.strokeWidth = 0;
+
+    series.tooltip.pointerOrientation = "vertical";
+
+    series.columns.template.column.cornerRadiusTopLeft = 10;
+    series.columns.template.column.cornerRadiusTopRight = 10;
+    series.columns.template.column.fillOpacity = 0.8;
+
+    // on hover, make corner radiuses bigger
+    var hoverState = series.columns.template.column.states.create("hover");
+    hoverState.properties.cornerRadiusTopLeft = 0;
+    hoverState.properties.cornerRadiusTopRight = 0;
+    hoverState.properties.fillOpacity = 1;
+
+    series.columns.template.adapter.add("fill", function(fill, target) {
+        return chart.colors.getIndex(target.dataItem.index);
+    });
+
+    // Cursor
+    chart.cursor = new am4charts.XYCursor();
+
+
+
+
+
+    draw_bar('domains', 'domain', 'domains', )
+    draw_bar('retweeted_collected', 'level', 'retweeted_collected')
+    draw_bar('retweeted_global', 'level', 'retweeted_global')
+    draw_bar('quoted', 'level', 'quoted')
+    draw_bar('replied_to', 'level', 'replied_to')
+    draw_bar('entities', 'level', 'entities')
+    draw_bar('hashtags', 'level', 'hashtags')
+    draw_bar('mentions', 'level', 'mentions')
+ 
+    
+    
+    function draw_bar(data, category, div){
+        am4core.useTheme(am4themes_animated);
+                // Themes end
+
+        // Create chart instance
+        var chart = am4core.create(div, am4charts.XYChart);
+        chart.scrollbarX = new am4core.Scrollbar();
+        chart.data = eval(summary_data[data])
+
+
+        // Create axes
+        var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+        categoryAxis.dataFields.category = category;
+        categoryAxis.renderer.grid.template.location = 0;
+        categoryAxis.renderer.minGridDistance = 30;
+        categoryAxis.renderer.labels.template.horizontalCenter = "right";
+        categoryAxis.renderer.labels.template.verticalCenter = "middle";
+        categoryAxis.renderer.labels.template.rotation = 270;
+        categoryAxis.tooltip.disabled = true;
+        categoryAxis.renderer.minHeight = 110;
+
+        var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+        valueAxis.renderer.minWidth = 50;
+
+        // Create series
+        var series = chart.series.push(new am4charts.ColumnSeries());
+        series.sequencedInterpolation = true;
+        series.dataFields.valueY = "total";
+        series.dataFields.categoryX = category;
+        series.tooltipText = "[{categoryX}: bold]{valueY}[/]";
+        series.columns.template.strokeWidth = 0;
+
+        series.tooltip.pointerOrientation = "vertical";
+
+        series.columns.template.column.cornerRadiusTopLeft = 10;
+        series.columns.template.column.cornerRadiusTopRight = 10;
+        series.columns.template.column.fillOpacity = 0.8;
+
+        // on hover, make corner radiuses bigger
+        var hoverState = series.columns.template.column.states.create("hover");
+        hoverState.properties.cornerRadiusTopLeft = 0;
+        hoverState.properties.cornerRadiusTopRight = 0;
+        hoverState.properties.fillOpacity = 1;
+
+        series.columns.template.adapter.add("fill", function(fill, target) {
+            return chart.colors.getIndex(target.dataItem.index);
+        });
+
+        // Cursor
+        chart.cursor = new am4charts.XYCursor();
+    }
+    
+
+
+    draw_pie(summary_data, 'tweet_type')
+
+
+
+
+
+
+
+
+
+
+
+
+    var chart = am4core.create("domain_polarity", am4charts.XYChart);
+
+    // Title
+    var title = chart.titles.push(new am4core.Label());
+    
+    title.fontSize = 25;
+    title.marginBottom = 15;
+
+    chart.data = eval(summary_data['domain_polarity'])
+    // Create axes
+    var categoryAxis = chart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "domain";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.inversed = true;
+    categoryAxis.renderer.minGridDistance = 20;
+    categoryAxis.renderer.axisFills.template.disabled = false;
+    categoryAxis.renderer.axisFills.template.fillOpacity = 0.05;
+
+
+    var valueAxis = chart.xAxes.push(new am4charts.ValueAxis());
+    valueAxis.min = -100;
+    valueAxis.max = 100;
+    valueAxis.renderer.minGridDistance = 50;
+    valueAxis.renderer.ticks.template.length = 5;
+    valueAxis.renderer.ticks.template.disabled = false;
+    valueAxis.renderer.ticks.template.strokeOpacity = 0.4;
+    valueAxis.renderer.labels.template.adapter.add("text", function(text) {
+    return text + "%";
+    })
+
+    // Legend
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = "right";
+
+    // Use only absolute numbers
+    chart.numberFormatter.numberFormat = "#.#s";
+
+    // Create series
+    function createSeries(field, name, color) {
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueX = field;
+    series.dataFields.categoryY = "domain";
+    series.stacked = true;
+    series.name = name;
+    series.stroke = color;
+    series.fill = color;
+    
+    var label = series.bullets.push(new am4charts.LabelBullet);
+    label.label.text = "{valueX}%";
+    label.label.fill = am4core.color("#fff");
+    label.label.strokeWidth = 0;
+    label.label.truncate = false;
+    label.label.hideOversized = true;
+    label.locationX = 0.5;
+    return series;
+    }
+
+    var interfaceColors = new am4core.InterfaceColorSet();
+    var positiveColor = interfaceColors.getFor("positive");
+    var negativeColor = interfaceColors.getFor("negative");
+
+
+    createSeries("very_negative", "Very_Negative", negativeColor);
+    createSeries("negative", "Negative", negativeColor.lighten(0.3));
+    createSeries("slightly_negative", "Slightly_Negative", negativeColor.lighten(0.7));
+    createSeries("neutral", "Neutral", am4core.color('#D3D3D3'));
+    createSeries("slightly_positive", "Slightly_Positive", positiveColor.lighten(0.7));
+    createSeries("positive", "Positive", positiveColor.lighten(0.3));
+    createSeries("very_positive", "Very_Positive", positiveColor);
+
+    chart.legend.events.on("layoutvalidated", function(event){
+        chart.legend.itemContainers.each((container)=>{
+            if(container.dataItem.dataContext.name == "very_negative"){
+            container.toBack();
+            }
+        })
+    })
+
+
+    
+}
+
+
+        
+function draw_pie(data, label){
+    alert('drawing pie' + label)
+    var chart = am4core.create(label, am4charts.PieChart);
+
+    // Add data
+    chart.data = data[label]
+
+    // Add and configure Series
+    var pieSeries = chart.series.push(new am4charts.PieSeries());
+    pieSeries.dataFields.value = "total";
+    pieSeries.dataFields.category = "domain";
+
+    // Let's cut a hole in our Pie chart the size of 40% the radius
+    chart.innerRadius = am4core.percent(40);
+
+    // Put a thick white border around each Slice
+    pieSeries.slices.template.stroke = am4core.color("#4a2abb");
+    pieSeries.slices.template.strokeWidth = 2;
+    pieSeries.slices.template.strokeOpacity = 1;
+
+
+
+        
+        // Add a legend
+    chart.legend = new am4charts.Legend();
+
+}
+    </script>
+
+
+
+
+
+
+
+
+
+
+<style>
+    #polarity_dist {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #subjectivity_dist {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #tweet_type {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #domains {
+      width: 100%;
+      height: 600px;
+     
+    }
+
+    #domain_polarity {
+      width: 100%;
+      height: 1200px;
+     
+    }
+
+
+
+    #retweeted_collected {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #retweeted_global {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #quoted {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #replied_to {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #mentions {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #hashtags {
+      width: 100%;
+      height: 400px;
+     
+    }
+
+    #entities {
+      width: 100%;
+      height: 600px;
+     
+    }
+    
+
+    </style>
+    
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    
+ 
+    <script src="https://cdn.amcharts.com/lib/4/plugins/wordCloud.js"></script>
+  
+
+    <!-- Chart code -->
+    <script>
+   
+    
+    </script>
+    
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Tweet Type Distribution</b></h2></div>
+            <div id="tweet_type"></div>
+        </div>
+        </div>
+    </div>
+
+
+
+
+<div class='row'>
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Domain Distribution</b></h2></div>
+            <div id="domains"></div>
+        </div>
+        </div>
+    </div>
+
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Entity Distribution (Top 50) </b></h2></div>
+            <div id="entities"></div>
+        </div>
+        </div>
+    </div>
+</div>
+
+
+    <div class='row'>
+        <div class="col-md-6">
+          <div class="card mb-4">
+              <div class="card-body">
+                  <div class="card-title mb-3"><h2><b>Polarity Distribution</b></h2></div>
+              <div id="polarity_dist"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="card-title mb-3"><h2><b>Subjectivity Distribution</b></h2></div>
+                <div id="subjectivity_dist"></div>
+            </div>
+            </div>
+        </div>
+
+    </div>
+
+   
+
+
+
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Domain Polarity Distribution</b></h2></div>
+            <div id="domain_polarity"></div>
+        </div>
+        </div>
+    </div>
+
+
+
+<div class='row'>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Retweeted Users (within data)</b></h2></div>
+            <div id="retweeted_collected"></div>
+        </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Retweeted Users (globally)</b></h2></div>
+            <div id="retweeted_global"></div>
+        </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Quoted Users (within data)</b></h2></div>
+            <div id="quoted"></div>
+        </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Replied Users (within data)</b></h2></div>
+            <div id="replied_to"></div>
+        </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Mentioned Users (within data)</b></h2></div>
+            <div id="mentions"></div>
+        </div>
+        </div>
+    </div>
+
+
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="card-title mb-3"><h2><b>Top Hashtags (within data)</b></h2></div>
+            <div id="hashtags"></div>
+        </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+</div>
+
