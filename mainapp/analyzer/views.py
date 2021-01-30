@@ -2034,7 +2034,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'retweet' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2052,7 +2052,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'domain' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
 
@@ -2071,7 +2071,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'entity' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
 
@@ -2090,7 +2090,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'hashtag' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2108,7 +2108,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'mention' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2126,7 +2126,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'annotation_org' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2144,7 +2144,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'annotation_product' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2163,7 +2163,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'annotation_persons' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2182,7 +2182,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'annotation_place' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                         )
                         union all
                         (
@@ -2201,7 +2201,7 @@ def call_ajax(request):
                             from base
                         )
                         select *, 'annotation_other' as which from base2
-                        where rc <= 10
+                        where rc <= 20
                             )
                             
                             
@@ -2315,7 +2315,7 @@ def call_ajax(request):
                     """.format(temp_table_name), engine)
             subjectivity = pd.read_sql_query("""
                     select 
-                    ((coalesce(subjectivity,0)*10)::int) /10::float as severity, count(*) as total
+                    ((coalesce(subjectivity,0)*20)::int) /20::float as severity, count(*) as total
                     FROM   df_tweets_processed t, {0} b 
                     where t.tweet_tweet_id = b.tweet_tweet_id 
                     group by severity
@@ -2616,6 +2616,18 @@ def create_preprocess_tweets_job(user, name, tracker, preproc, nlp, stopwords, c
                         )
     except Exception as e:
         errors["schedule('analyzer.nlp_processor.Processor"] = str(e)
+
+    if 'tagme' in preproc:
+        try:
+            print('Scheduling tagme......')
+            schedule('analyzer.TagMeAnnotator.Annotator',
+                            processor_name=name,
+                            schedule_type='I',
+                            minutes = 5,
+                            repeats = 100000000
+                            )
+        except Exception as e:
+            errors["schedule('analyzer.TagMeAnnotator.Annotator"] = str(e)
         
     return JsonResponse({'status': str(errors)})
        

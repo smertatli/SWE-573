@@ -227,12 +227,12 @@
          </div>
           <div class="col-md-4">
               
-            <button class="btn btn-warning btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track('no');">Cancel Selected Track(s)</button>
+            <button class="btn btn-warning btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track(to_delete = 'no');">Cancel Selected Track(s)</button>
           </div>
       
           <div class="col-md-4">
             
-            <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track('yes');">Delete Selected Track(s)</button>
+            <button class="btn btn-danger btn-block mb-3" id="alert-success" type="submit" name = 'btn' onclick="stop_track(to_delete = 'yes');">Delete Selected Track(s)</button>
           </div>
              
         </div>
@@ -692,10 +692,10 @@
                     }
             }).responseJSON;
 
-        if(result_code['result'] > ''){
+        if(result_code['check'] == 0){
           alert(result_code['result'])
         } else {
-
+              alert(result_code['result'])
               var processors = $.ajax({
                     type: 'POST',
                     async: false,

@@ -33,47 +33,64 @@ def create_track(request):
 
 @csrf_exempt
 def cancel_track(request):
-    if request.method == 'POST':
-        trackers = request.POST.get('selected')
-        to_delete = request.POST.get('to_delete')
+    trackers = request.POST.get('selected')
+    to_delete = request.POST.get('delete')
+    
+    engine = create_engine(db_connection_url)
+    temp_all = pd.read_sql_query("""
+        select a.id, b.id as schedule_id, u.username,  query_name, coalesce(b.repeats,0) as repeat
+        from tracker_tracker a
+        inner join auth_user u on a.user_id = u.id and a.id in ({0}) 
+        left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0  
+        and b.func = 'tracker.tweet_collector.TweetCollector' 
+        """.format(trackers), engine)
+    print(temp_all, trackers)
+
+    message = ''
+    schedule_ids = ''
+    query_names = ''
+    check = 0
+
+    for index, row in temp_all.iterrows():
+        if(row['username'] != str(request.user)):
+            message = message  + row['query_name'] + ': {0} are not the owner of this track.\n'.format(request.user)
+
+        elif(row['repeat'] == 0):
+            message = message  + row['query_name'] + ': This task is already cancelled.\n'
+            print(to_delete)
+            if to_delete == 'yes':
+                query_names += "'"+str(row['query_name'])+"',"
+                message = message +  row['query_name'] + ': Successfully deleted.\n'
+                check = 1
+        else:
+            message = message +  row['query_name'] + ': Successfully cancelled.\n'
+            schedule_ids = schedule_ids + str(row['schedule_id']) +','
+            if to_delete == 'yes':
+                query_names += "'"+str(row['query_name'])+"',"
+                message = message + row['query_name'] + ': Successfully deleted.\n'
+            check = 1
+
+    conn = engine.connect()
+    try:
+        if(schedule_ids):
+            print('CANCELLING tracks: ', schedule_ids[:-1])
+            conn.execute("DELETE from django_q_schedule where id in ({0})".format(schedule_ids[:-1]))
+    except:
+        message = 'ERROR IN CANCELLING TRACKS. PLASE CONTACT ADMIN.'
+
+    try:
+        if(query_names):
+            print('DELETING tracks: ', query_names[:-1])
+            conn.execute("DELETE from tracker_tracker where query_name in ({0})".format(query_names[:-1]))
+    except Exception as e:
+        message = 'ERROR IN DELETING TRACKS. PLASE CONTACT ADMIN.'
+        print(str(e))
         
-        engine = create_engine(db_connection_url)
-        temp_all = pd.read_sql_query("""
-            select a.id, b.id as schedule_id, u.username, concat(query_name,'(id=',a.id::varchar(255),')') as query_name, query, frequency_level1, frequency_level2, fetch_size,
-            date_start, date_end, coalesce(repeats,0) as repeat
-            from tracker_tracker a
-            inner join auth_user u on a.user_id = u.id and a.id in ({0}) 
-            left join django_q_schedule b on position(concat('''',a.query_name,'''') in b.kwargs) > 0  
-            and b.func = 'tracker.tweet_collector.TweetCollector' 
-            """.format(trackers), engine)
-        print(temp_all, trackers)
-
-        successes = ''
-        message = ''
-
-        for index, row in temp_all.iterrows():
-            if(row['username'] != str(request.user)):
-                message = message + '<br> ' + row['query_name'] + ': {0} are not the owner of this track.</br>'.format(request.user)
-                
-            elif(row['repeat'] == 0):
-                message = message + '<br>' + row['query_name'] + ': This task is already cancelled.</br>'
-
-            else:
-                message = message + '<br>' + row['query_name'] + ': Successfully cancelled.</br>'
-                successes = successes + str(row['schedule_id']) +','
-            
-
-
-        if(successes):
-            conn = engine.connect()
-            print('DELETING tracks: ', successes[:-1])
-            conn.execute("DELETE from django_q_schedule where id in ({0})".format(successes[:-1]))
-            conn.close()
-        
-        engine.dispose()
-        return render(request, 'tracker/create.html', {'status': message + successes + trackers})
-    else:
-        return render(request, 'tracker/create.html', {'status': 'ignore'})
+    conn.close()
+    engine.dispose()
+    print({'result': message, 'check': check})
+    return JsonResponse({'result': message, 'check': check})
+    
 
 @csrf_exempt
 def create_track_ajax(request):
