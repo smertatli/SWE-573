@@ -21,6 +21,7 @@ urlpatterns = [
     path('comparisor/', views.comparisor, name='comparisor'),
     path('deepdiver/', views.deepdiver, name='deepdiver'),
     path('summarizer/', views.summarizer, name='summarizer'),
+    path('save_dashboard/', views.save_dashboard, name='save_dashboard'),
     
 
     

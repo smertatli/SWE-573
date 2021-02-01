@@ -359,7 +359,8 @@ def call_ajax(request):
         
         table = pd.read_sql_query("""
             select a.id, a.name, a.tracker, a.stopwords, a.corrections, a.preproc, a.nlp, case when b.id is not null then 'Active' else 'Inactive' end status
-            from analyzer_processor_nlp a left join django_q_schedule b on position(a.name in b.kwargs) > 0 and coalesce(repeats,0) <> 0
+            from analyzer_processor_nlp a left join django_q_schedule b on position(concat('''',a.name,'''')  in b.kwargs) > 0 and coalesce(repeats,0) <> 0
+            and func = 'analyzer.nlp_processor.Processor'
              
             """.format(request.user.id), engine)
         procs = []
@@ -741,6 +742,51 @@ def call_ajax(request):
                     """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ), engine)
 
 
+
+            distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
+
+            engine.dispose()
+            return JsonResponse({'data': temp[['from', 'to', 'value']].to_dict(orient='records'), 'data2': distinct.to_dict(orient='records'),
+                                                'degree_df': degree_df.to_json(orient='records'),
+                                                'bet_df': bet_df.to_json(orient='records'),
+                                                'ieg_df': eigen.to_json(orient='records'),
+                                                'clus_df': clustering.to_json(orient='records')})
+
+        elif node_level == 'entity_tagme':
+            try:
+                temp = pd.read_sql_query("""
+                with 
+                    base as (
+                        select distinct
+                            t.tweet_Tweet_id, lower(split_part(elem, '=', 2)) as entity
+                        from 
+                            tweet_tagme_annotation t, tracker_tracker b, tweet_main_Table c,
+                            unnest(string_to_array(t.annotations, '||')) WITH ORDINALITY a(elem, nr)
+                        where
+                            b.id in ({0}) and b.query_name = c.query_name and date(c.tweet_created_at) between '{1}' and '{2}'
+                            and split_part(elem, '=', 2) not in ({4})
+                            and t.tweet_tweet_id = c.tweet_tweet_id
+                    ),
+                    ids as (
+                        select entity, count(*) node_size from base group by entity
+                    ),
+                    ids2 as (
+                        select *, row_number() over (order by node_size desc) as id from ids
+                    )
+                    select 
+                        a.entity as from_name, id1.id as from,  id1.node_size as from_size, 
+                        b.entity as to_name,  id2.id as to,  id2.node_size as to_size,  
+                        count(*) as value
+                    from base a, base b, ids2 id1, ids2 id2
+                    where a.tweet_Tweet_id=b.tweet_Tweet_id and a.entity < b.entity and a.entity = id1.entity and b.entity=id2.entity 
+                    and a.entity > '' and b.entity > ''
+                    group by a.entity, b.entity, id1.id, id2.id, id1.node_size, id2.node_size 
+                    order by count(*) desc
+                    limit {3}
+                    """.format(track, start_date, end_date, str(100) if top_n == '' else str(top_n), excluded_terms ), engine)
+
+            except Exception as e:
+                print('ERROR IN DOMAIN TAGME NETWORK: ', str(e))
 
             distinct, degree_df, bet_df, eigen, clustering = get_network_metrics(temp)
 
@@ -1994,6 +2040,7 @@ def call_ajax(request):
                             where
                                 position(concat('''',a.query_name,'''') in b.kwargs) > 0 
                                 and b.func = 'tracker.tweet_collector.TweetCollector'
+                                and a.query_name in (select elem from dashboard_preferences where which = 'track' and user_id = {0})
                         ),
                         base as (
                             select 
@@ -2218,33 +2265,36 @@ def call_ajax(request):
                             group by t.query_name, period, domain
 
                         );
+    
+        """.format(int(request.user.id)))
 
 
-                        drop table if exists temp3;
-                        create table temp3 as 
-                        select 
-                            period,
-                            case when polarity <= -0.8 then '6 - Very Negative'
-                            when polarity <= -0.5 then '5 - Negative'
-                            when polarity < 0 then '4 - Slightly Negative'
-                            when polarity = 0 then '3 - Neutral'
-                            when polarity < 0.5 then '2 - Slightly Positive'
-                            else '1 - Very Positive' end as severity, count(*) as total
-                        from df_tweets_processed a,  temp1 b, tweet_main_table c
-                        where a.query_name = b.query_name and a.tweet_tweet_id = c.tweet_tweet_id
-                                and b.key = c.key
-                        group by period, severity
-
-                        
-                    
-        """)
+        try:
+            conn.execute("""drop table if exists temp3;
+                            create table temp3 as 
+                            select 
+                                period,
+                                case when polarity <= -0.8 then '6 - Very Negative'
+                                when polarity <= -0.5 then '5 - Negative'
+                                when polarity < 0 then '4 - Slightly Negative'
+                                when polarity = 0 then '3 - Neutral'
+                                when polarity < 0.5 then '2 - Slightly Positive'
+                                else '1 - Very Positive' end as severity, count(*) as total
+                            from df_tweets_processed a,  temp1 b, tweet_main_table c
+                            where a.query_name = b.query_name and a.tweet_tweet_id = c.tweet_tweet_id
+                                    and b.key = c.key
+                                    and a.processor_name in (select elem from dashboard_preferences where which = 'processor' and user_id = {0})
+                            group by period, severity """.format(int(request.user.id)))
+            polarity = pd.read_sql_query("""select * from temp3""", engine)
+        except:
+            polarity = pd.DataFrame()
 
 
 
 
         conn.close()
 
-        polarity = pd.read_sql_query("""select * from temp3""", engine)
+        
 
         temp_data = pd.read_sql_query("""select * from temp1""", engine)
         temp_sample = pd.read_sql_query("""select * from temp2 where rc <= 20""", engine)
@@ -2384,7 +2434,7 @@ def call_ajax(request):
             retweeted_global = pd.read_sql_query("""
                       select 
                         ref_username as level,
-                        sum(tweet_retweet_count) as total, 
+                        max(tweet_retweet_count) as total, 
                         max(tweet_retweet_count),
                         max(retweeted_text) as text,
                         max(retweeted_tweet_id) as tweet_id
@@ -2694,4 +2744,24 @@ def get_network_metrics(temp):
     clustering = pd.DataFrame(dd, columns=['label','value'])
 
     return distinct, degree_df, bet_df, eigen, clustering
+
+@csrf_exempt
+def save_dashboard(request):
+    which = request.POST.get('which')
+    elem = ''
+    if which == 'track':
+        elem = request.POST.get('track')
+    else:
+        elem = request.POST.get('processor')
+
+    engine = create_engine(db_connection_url)
+    conn = engine.connect()
+    df = pd.DataFrame([[int(request.user.id), which, elem[:elem.rfind('(')]]], columns=['user_id', 'which', 'elem'])
+    try:
+        conn.execute('DELETE from dashboard_preferences where user_id = {0}'.format(int(request.user.id)))
+    except Exception as e:
+        print(str(e))
+    df.to_sql('dashboard_preferences', engine, if_exists='append', index=False)
+    conn.close()
+    engine.dispose()
 

@@ -12,7 +12,7 @@ class Tracker(models.Model):
     fetch_size = models.IntegerField(null=True, blank=True)
     date_start = models.DateField(null=True, blank=True)
     date_end = models.DateField(null=True, blank=True)
-
+    create_date = models.DateTimeField(null=True, blank=True)
     def __str__(self):
         return self.query
     

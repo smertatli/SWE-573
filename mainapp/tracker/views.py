@@ -82,6 +82,7 @@ def cancel_track(request):
         if(query_names):
             print('DELETING tracks: ', query_names[:-1])
             conn.execute("DELETE from tracker_tracker where query_name in ({0})".format(query_names[:-1]))
+            conn.execute("DELETE from tweet_main_table where query_name in ({0})".format(query_names[:-1]))
     except Exception as e:
         message = 'ERROR IN DELETING TRACKS. PLASE CONTACT ADMIN.'
         print(str(e))
@@ -111,8 +112,6 @@ def create_track_ajax(request):
                 fetch_size = request.POST.get('fetch_size')
                 date_start = request.POST.get('date_start')
                 date_end = request.POST.get('date_end')
-
-
                 Tracker.objects.create(user=user,
                                         query_name = name,
                                         query=query,
@@ -120,7 +119,8 @@ def create_track_ajax(request):
                                         frequency_level2=frequency_level2,
                                         fetch_size = fetch_size,
                                         date_start = date_start,
-                                        date_end = date_end 
+                                        date_end = date_end,
+                                        create_date = datetime.now()
                                         )
                 tracker_created = True
                 task_created = create_task(name, query, frequency_level1, frequency_level2, fetch_size, date_start, date_end, manual=False)
@@ -140,14 +140,14 @@ def create_task(name, query, frequency_level1, frequency_level2, fetch_size, dat
     date_start = datetime.strptime(date_start, "%Y-%m-%d")
     date_end =  datetime.strptime(date_end, "%Y-%m-%d")
 
-    day_diff = (date_end - date_start).days
+    day_diff = (date_end - date_start).days + 1
 
     if frequency_level1 == 'minute':
         schedule_type = 'I'
-        repeat = day_diff * 24 * 60
+        repeat = day_diff * 24 * 60 / int(frequency_level2)
     else:
         schedule_type ='H'
-        repeat = day_diff * 24
+        repeat = day_diff * 24 / int(frequency_level2)
       
 
     if manual:
@@ -218,6 +218,23 @@ def visualize_accumulations(request):
             a.query_name
         order by
             count(*) desc
+        
+        """.format(trackers), engine)
+
+    date_all = pd.read_sql_query("""
+        select 
+            date(tweet_created_at) as query_name , count(*) as total 
+        from 
+            tweet_main_table 
+        where query_name in (
+                select distinct query_name
+                from tracker_tracker 
+                where id in ({0}) 
+            )
+        group by
+            date(tweet_created_at)
+        order by
+            date(tweet_created_at)
         
         """.format(trackers), engine)
 

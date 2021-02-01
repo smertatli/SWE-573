@@ -14,7 +14,7 @@ import io
 import re
 import twitter
 from collections import OrderedDict
-from .fusioncharts import FusionCharts
+
 
 
 CONSUMER_KEY = "sJJJUWkvfvpZYcbY0buMRYup7"
@@ -43,7 +43,10 @@ def _signup(request):
             user = form.save()
             password = request.POST.get('password')
             user.set_password(password)
+            user.is_active = False
             user.save()
+
+            send_mail_to_admin(request.POST.get('username'))
             return redirect(settings.LOGIN_URL)
         else:
             error = 'Form validation failed.' 
@@ -69,7 +72,7 @@ def _login(request):
                 return render(request, 'accounts/board.html')
             else:
                 loginFailed = True
-                errorMessage = "Your account is not active"
+                errorMessage = "Your account is not actived by the admin yet."
                 # return HttpResponse("Your account is not active.")
         else:
             loginFailed = True
@@ -100,40 +103,21 @@ def _sniff_tweets(request):
 
 
 
-def myFirstChart(request):
-# Chart data is passed to the `dataSource` parameter, like a dictionary in the form of key-value pairs.
-  dataSource = OrderedDict()
+def send_mail_to_admin(user):
+    import smtplib
 
-# The `chartConfig` dict contains key-value pairs of data for chart attribute
-  chartConfig = OrderedDict()
-  chartConfig["caption"] = "Countries With Most Oil Reserves [2017-18]"
-  chartConfig["subCaption"] = "In MMbbl = One Million barrels"
-  chartConfig["xAxisName"] = "Country"
-  chartConfig["yAxisName"] = "Reserves (MMbbl)"
-  chartConfig["numberSuffix"] = "K"
-  chartConfig["theme"] = "fusion"
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login('trendspotter.info@gmail.com', 'rRocks15')
+        server.sendmail('trendspotter.info@gmail.com', 'trendspotter.info@gmail.com', 'User {0} is waiting for activation.'.format(user))
+        server.sendmail('trendspotter.info@gmail.com', user, 'Thank you for registering. Your account is waiting for admin approval.')
+        
+    except Exception as e:
+        print ('Something went wrong...', str(e))
 
-  dataSource["chart"] = chartConfig
-  dataSource["data"] = []
 
- # The data for the chart should be in an array wherein each element of the array  is a JSON object having the `label` and `value` as keys.
-# Insert the data into the `dataSource['data']` list.
-  dataSource["data"].append({"label": 'Venezuela', "value": '290'})
-  dataSource["data"].append({"label": 'Saudi', "value": '290'})
-  dataSource["data"].append({"label": 'Canada', "value": '180'})
-  dataSource["data"].append({"label": 'Iran', "value": '140'})
-  dataSource["data"].append({"label": 'Russia', "value": '115'})
-  dataSource["data"].append({"label": 'Russia', "value": '115'})
-  dataSource["data"].append({"label": 'UAE', "value": '100'})
-  dataSource["data"].append({"label": 'US', "value": '30'})
-  dataSource["data"].append({"label": 'China', "value": '30'})
 
-# Create an object for the column 2D chart using the FusionCharts class constructor
-# The chart data is passed to the `dataSource` parameter.
-  column2D = FusionCharts("column2d", "myFirstChart", "600", "400", "myFirstchart-container", "json", dataSource)
-  return render(request, 'accounts/board.html', {
-    'output': column2D.render()
-})
 
 
 def logout(request):

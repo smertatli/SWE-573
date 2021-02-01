@@ -268,3 +268,4 @@ def insertTweets(main, query_name=''):
     conn.close()
 
     engine.dispose()
+    

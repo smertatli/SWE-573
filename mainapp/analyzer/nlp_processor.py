@@ -71,7 +71,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 from base a left join df_tweets_processed b on a.tweet_tweet_id = b.tweet_tweet_id and processor_name in ('{1}')
                 where b.tweet_tweet_id is null
                 order by retweet
-                limit 50000
+                limit 20000
             """.format(tracker, proc_name), engine)
         id_string = ",".join(["'"+txt+"'" for txt in check['tweet_tweet_id']])
     except:
@@ -91,24 +91,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
             for remainder in range(0,10):
                 print('OFfffffffffffFh')
 
-                print("""
-                    with base as (
-                        select distinct
-                            a.tweet_tweet_id, 
-                            case when retweeted_tweet_id is not null then retweeted_text else tweet_text end as tweet_text, 
-                            retweeted_tweet_id,
-                            date(tweet_created_at) as created_at, 
-                            1 as multiplier, 
-                            a.query_name
-                        from
-                            tweet_main_table a, tracker_tracker b
-                        where
-                            a.query_name = b.query_name 
-                            and b.id in ({0})
-                        
-                        )
-                        select * from base where mod(tweet_tweet_id::bigint,10) = {1} and (tweet_tweet_id in ({2}) or {3})
-                """.format(tracker, remainder, "'1'" if id_string == '' else id_string, ' 1=1' if check.empty else ' 1=2' ))
+               
 
                 table = pd.read_sql_query("""
                     with base as (

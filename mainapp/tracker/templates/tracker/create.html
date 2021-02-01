@@ -199,7 +199,7 @@
                       <th>fetch_size</th>
                       <th>status</th>
                       <th>date_start</th>
-                      <th>date_end Name</th>                
+                      <th>date_end</th>                
                   </tr>
               </thead>
               <tfoot>
@@ -213,7 +213,7 @@
                       <th>fetch_size</th>
                       <th>status</th>
                       <th>date_start</th>
-                      <th>date_end Name</th>                
+                      <th>date_end</th>                
                   </tr>
               </tfoot>
               </table>
@@ -565,9 +565,15 @@
         if(!(level1 && level2 && fetch_size && date_start && date_end)){
           alert('Error in ' + errors)
         }
+        else if ( (new Date()).toISOString().split('T')[0] > date_end ){
+          alert('end_date cannot be less than today!')
+        }
         else {
 
           alert([name_query,query, level1, level2, fetch_size, date_start, date_end])
+          if ((new Date()).toISOString().split('T')[0] < date_start){
+            alert("The event is scheduled for the future time period. Until the begin date, it won't collect anything")
+          }
           var result = $.ajax({
                           type: 'POST',
                           async: false,
@@ -680,50 +686,65 @@
 
 
   function stop_track(to_delete){
-        selected  = document.getElementById('dummy').value
-        var result_code = $.ajax({
-                    type: 'POST',
-                    async: false,
-                    url: '{% url "tracker:cancel_track" %}',
-                    dataType: 'json',
-                    data: {
-                        'selected': selected,
-                        'delete': to_delete
-                    }
-            }).responseJSON;
-
-        if(result_code['check'] == 0){
-          alert(result_code['result'])
-        } else {
-              alert(result_code['result'])
-              var processors = $.ajax({
-                    type: 'POST',
-                    async: false,
-                    url: '',
-                    dataType: 'json',
-                    data: {
-                        'which': 'get_tracks'
-                    }
+        str = ''
+        str2= ''
+        if(to_delete == 'no'){
+          str = 'CANCEL'
+        }
+        else {
+          str = 'DELETE'
+          str2 = 'This will delete all the collected tweets by the track(s)!'
+        }
+        if (confirm('Are you sure you want to ' + str + ' the track(s)? ' + '\n' + str2)) {
+            selected  = document.getElementById('dummy').value
+            var result_code = $.ajax({
+                      type: 'POST',
+                      async: false,
+                      url: '{% url "tracker:cancel_track" %}',
+                      dataType: 'json',
+                      data: {
+                          'selected': selected,
+                          'delete': to_delete
+                      }
               }).responseJSON;
 
-
-              table_processor = $('#processors').DataTable({
-                  data: processors,
-                  'destroy': true,
-                  'columnDefs': [
-                      {
-                          'targets': 0,
-                          'checkboxes': {
-                              'selectRow': true
-                          }
+            if(result_code['check'] == 0){
+            alert(result_code['result'])
+            } else {
+                alert(result_code['result'])
+                var processors = $.ajax({
+                      type: 'POST',
+                      async: false,
+                      url: '',
+                      dataType: 'json',
+                      data: {
+                          'which': 'get_tracks'
                       }
-                  ],
-                  'select': {
-                      'style': 'multi'
-                  },
-                  'order': [[1, 'asc']]
-              });
+                }).responseJSON;
+
+
+                table_processor = $('#processors').DataTable({
+                    data: processors,
+                    'destroy': true,
+                    'columnDefs': [
+                        {
+                            'targets': 0,
+                            'checkboxes': {
+                                'selectRow': true
+                            }
+                        }
+                    ],
+                    'select': {
+                        'style': 'multi'
+                    },
+                    'order': [[1, 'asc']]
+                });
+            }
+        } else {
+          // Do nothing!
+          alert('Action revoked.');
         }
+        
   }
   </script>
 

@@ -9,7 +9,6 @@ urlpatterns = [
     path('main', views._login, name='main'),
     path('looknfeel', views._looknfeel, name='looknfeel'),
     path('ajax/looknfeel', views._sniff_tweets, name='snifftweets'),
-    path('board/', views.myFirstChart, name='boardchart'),
     path('logout/', views.logout, name='logout'),
     
 
