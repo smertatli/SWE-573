@@ -19,10 +19,6 @@ For Docker: [Docker](https://docs.docker.com/installation/)
 <br>
 For Docker-Compose: [Docker Compose](https://docs.docker.com/compose/install/)
 
-```bash
->  git clone https://github.com/smertatli/SWE-573.git
-```
-
 
 ## Run the following command in fetched repository to run the docker container:
 ```bash
