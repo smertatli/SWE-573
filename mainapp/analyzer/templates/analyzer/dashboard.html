@@ -483,20 +483,7 @@ chart.legend.useDefaultMarker = true;
           <div class="ul-widget__chart-info">
               <h5 class="heading"># OF CURRENT ACTIVE TRACKS</h5>
               <div class="ul-widget__chart-number">
-                  <h2 class="t-font-boldest">10</h2><small class="text-muted">*0 if no active tracks</small>
-              </div>
-          </div>
-    </div>
-  </div>
-</div>
-
-<div class="col-md-3 col-lg-3">
-  <div class="card mb-4 o-hidden">
-      <div class="card-body ul-card__widget-chart" style="position: relative;">
-          <div class="ul-widget__chart-info">
-              <h5 class="heading"># OF CURRENT ACTIVE PROCESSORS</h5>
-              <div class="ul-widget__chart-number">
-                  <h2 class="t-font-boldest">10</h2><small class="text-muted">*0 if no active processors</small>
+                  <h2 class="t-font-boldest" id='all_track'>10</h2><small class="text-muted">*0 if no active tracks</small>
               </div>
           </div>
     </div>
@@ -509,7 +496,20 @@ chart.legend.useDefaultMarker = true;
           <div class="ul-widget__chart-info">
               <h5 class="heading"># OF CURRENT ACTIVE TRACKS (YOURS)</h5>
               <div class="ul-widget__chart-number">
-                  <h2 class="t-font-boldest">10</h2><small class="text-muted">*0 if no active tracks </small>
+                  <h2 class="t-font-boldest" id='user_track'>10</h2><small class="text-muted">*0 if no active processors</small>
+              </div>
+          </div>
+    </div>
+  </div>
+</div>
+
+<div class="col-md-3 col-lg-3">
+  <div class="card mb-4 o-hidden">
+      <div class="card-body ul-card__widget-chart" style="position: relative;">
+          <div class="ul-widget__chart-info">
+              <h5 class="heading"># OF CURRENT ACTIVE PROCESSORS</h5>
+              <div class="ul-widget__chart-number">
+                  <h2 class="t-font-boldest" id='all_proc'>10</h2><small class="text-muted">*0 if no active tracks </small>
               </div>
           </div>
     </div>
@@ -522,7 +522,7 @@ chart.legend.useDefaultMarker = true;
           <div class="ul-widget__chart-info">
               <h5 class="heading"># OF CURRENT ACTIVE PROCESSORS (YOURS)</h5>
               <div class="ul-widget__chart-number">
-                  <h2 class="t-font-boldest">10</h2><small class="text-muted">*0 if no active processors</small>
+                  <h2 class="t-font-boldest" id='user_proc'>10</h2><small class="text-muted">*0 if no active processors</small>
               </div>
           </div>
     </div>
@@ -558,7 +558,7 @@ chart.legend.useDefaultMarker = true;
 
 
 <div class='row'>
-  <div class="col-md-6">
+  <div class="col-md-12">
       <div class="card mb-3">
           <div class="card-body">
               <div class="card-title mb-3"><h3><b>Track Completion Rate</b></h3></div>
@@ -567,16 +567,6 @@ chart.legend.useDefaultMarker = true;
       </div>
     </div>
 
-
- 
-    <div class="col-md-6">
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="card-title mb-3"><h3><b>Processor Completion Rate</b></h3></div>
-            <div id="barem"></div>
-          </div>
-        </div>
-    </div>
   </div> 
 
 <div id='row'>
@@ -728,14 +718,15 @@ chart.legend.useDefaultMarker = true;
 
 
 
-
+<text id='looged_user'>{{user.id}}</text>
+<text id='looged_username'>{{user}}</text>
 
 <script>
 
         var tracks = $.ajax({
         type: 'POST',
         async: false,
-        url: '{% url "analyzer:get_tracks" %}',
+        url: '{% url "tracker:get_tracks" %}',
         dataType: 'json'
         }).responseJSON;
 
@@ -743,32 +734,54 @@ chart.legend.useDefaultMarker = true;
         var processors = $.ajax({
         type: 'POST',
         async: false,
-        url: '{% url "analyzer:call_ajax" %}',
-        dataType: 'json',
-        data: {
-            'which': 'get_processors'
-            }
+        url: '{% url "analyzer:get_dashboard_processor" %}',
+        dataType: 'json'
         }).responseJSON;
 
         var tracker_dashboard = document.getElementById("tracker_dashboard"); 
         var processor_dashboard = document.getElementById("processor_dashboard"); 
 
    
+        looged_user = document.getElementById('looged_user')
+        var total_track=0
+        var user_track=0
+        var total_processor=0
+        var user_processor=0
+
         for(a=0; a<tracks.length; a++){
-          var el = document.createElement("option");
-              el.textContent = tracks[a][1];
-              el.value = tracks[a][1];
+          if(tracks[a][7] == 'Active'){
+              var el = document.createElement("option");
+              el.textContent = tracks[a][2];
+              el.value = tracks[a][2];
               tracker_dashboard.appendChild(el);
+              total_track = total_track + 1
+          }
+
+          if(tracks[a][1] == looged_username.innerText) {
+              user_track = user_track+1
+            }
         }
 
-
+  
 
         for(a=0; a<processors.length; a++){
-          var el = document.createElement("option");
-              el.textContent = tracks[a][1];
-              el.value = tracks[a][1];
+          if(processors[a][7] == 'Active'){
+              var el = document.createElement("option");
+              el.textContent = processors[a][1];
+              el.value = processors[a][1];
               processor_dashboard.appendChild(el);
-        }
+              total_processor = total_processor + 1
+            }
+
+            if(processors[a][8] == looged_user) {
+              user_processor = user_processor+1
+            }
+          }
+
+          document.getElementById("all_track").innerHTML = total_track
+          document.getElementById("user_track").innerHTML = user_track
+          document.getElementById("all_proc").innerHTML = total_processor
+          document.getElementById("user_proc").innerHTML = user_processor
 
 
         function save_dashboard(which){
@@ -803,21 +816,9 @@ chart.legend.useDefaultMarker = true;
           }
         }
         
+
   
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

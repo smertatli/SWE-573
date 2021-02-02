@@ -89,7 +89,7 @@ def Processor(user_name, proc_name, tracker, preproc, nlp, stopwords_file, corre
                 print('KONTROL ', check)
                 print('Inserting ', len(check['tweet_tweet_id']), ' rows...')
             for remainder in range(0,10):
-                print('OFfffffffffffFh')
+            
 
                
 

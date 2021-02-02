@@ -22,6 +22,8 @@ urlpatterns = [
     path('deepdiver/', views.deepdiver, name='deepdiver'),
     path('summarizer/', views.summarizer, name='summarizer'),
     path('save_dashboard/', views.save_dashboard, name='save_dashboard'),
+    path('get_dashboard_processor/', views.get_dashboard_processor, name='get_dashboard_processor'),
+    
     
 
     

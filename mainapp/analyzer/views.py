@@ -84,7 +84,7 @@ def get_domain_entity(request):
         select a.* from base2 a, base3 b where rc <= 10 and a.domain_name = b.domain_name order by a.domain_name, rc
         """, engine)
     engine.dispose()
-    print('+++++++++++++++++++++++++++++++++++++++++ AKSDPOAKSDPOAKSDPAKSOP')
+  
     print(table)
 
 
@@ -2751,17 +2751,33 @@ def save_dashboard(request):
     elem = ''
     if which == 'track':
         elem = request.POST.get('track')
+        elem = elem[:elem.rfind('(')]
     else:
         elem = request.POST.get('processor')
 
     engine = create_engine(db_connection_url)
     conn = engine.connect()
-    df = pd.DataFrame([[int(request.user.id), which, elem[:elem.rfind('(')]]], columns=['user_id', 'which', 'elem'])
+    df = pd.DataFrame([[int(request.user.id), which, elem]], columns=['user_id', 'which', 'elem'])
     try:
-        conn.execute('DELETE from dashboard_preferences where user_id = {0}'.format(int(request.user.id)))
+        conn.execute("""DELETE from dashboard_preferences where user_id = {0} and which ='{1}'""".format(int(request.user.id), which))
     except Exception as e:
         print(str(e))
     df.to_sql('dashboard_preferences', engine, if_exists='append', index=False)
     conn.close()
     engine.dispose()
 
+@csrf_exempt
+def get_dashboard_processor(request):
+    print('GET PROCESSORS DASHBOARD: ', request.user, request.user.id)
+    engine = create_engine(db_connection_url)
+    table = pd.read_sql_query("""
+        select a.id, a.name, a.tracker, a.stopwords, a.corrections, a.preproc, a.nlp, case when b.id is not null then 'Active' else 'Inactive' end status, a.user_id
+        from analyzer_processor_nlp a left join django_q_schedule b on position(concat('''',a.name,'''')  in b.kwargs) > 0 and coalesce(repeats,0) <> 0
+        and func = 'analyzer.nlp_processor.Processor'
+            
+        """.format(request.user.id), engine)
+    procs = []
+    for index, row in table.iterrows():
+        procs.append([row['id'], row['name'],  row['tracker'], row['stopwords'], row['corrections'], row['preproc'], row['nlp'], row['status'],row['user_id']])
+    engine.dispose()
+    return JsonResponse(procs, safe=False) 

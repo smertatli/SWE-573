@@ -52,7 +52,7 @@ def cancel_track(request):
     check = 0
 
     for index, row in temp_all.iterrows():
-        if(row['username'] != str(request.user)):
+        if(row['username'] != str(request.user)) and not request.user.is_superuser:
             message = message  + row['query_name'] + ': {0} are not the owner of this track.\n'.format(request.user)
 
         elif(row['repeat'] == 0):
