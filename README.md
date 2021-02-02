@@ -6,6 +6,35 @@ General information and documentation can be found in the Wiki page.
 
 Project info can be found on Projects page.
 
+# Installation: 
+Here is the installation guide of the project.
+
+## Clone the project:
+```bash
+>  git clone https://github.com/smertatli/SWE-573.git
+```
+
+## Install Docker and Docker-Compose:
+For Docker: [Docker](https://docs.docker.com/installation/) 
+<br>
+For Docker-Compose: [Docker Compose](https://docs.docker.com/compose/install/)
+
+```bash
+>  git clone https://github.com/smertatli/SWE-573.git
+```
+
+
+## Run the following command in fetched repository to run the docker container:
+```bash
+docker-compose up –-build -d
+```
+
+
+
+## Visit the following link via a browser:
+localhost:8000
+
+
 # Some Visuals from Dashboard
 
 # 1-
@@ -31,3 +60,7 @@ Project info can be found on Projects page.
 
 # 8-
 ![Usecase Diagram](https://github.com/smertatli/SWE-573/blob/main/Images/dashboard8.png)
+
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
